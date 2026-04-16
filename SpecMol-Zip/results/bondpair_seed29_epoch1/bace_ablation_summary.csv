@@ -1,0 +1,2 @@
+variant,seeds,runs,valid_auc_mean,valid_auc_std,test_auc_mean,test_auc_std
+V1-bondpair,"9,19,29",1,0.7309027777777778,0.0,0.43711018711018707,0.0

@@ -1,0 +1,30 @@
+No normalization for SPS. Feature removed!
+No normalization for AvgIpc. Feature removed!
+Skipped loading some Tensorflow models, missing a dependency. No module named 'tensorflow'
+Skipped loading modules with pytorch-geometric dependency, missing a dependency. No module named 'dgl'
+Skipped loading modules with transformers dependency. No module named 'transformers'
+cannot import name 'HuggingFaceModel' from 'deepchem.models.torch_models' (C:\Users\zhoutianyang\Desktop\SpecMol-Zip\unimol_env\Lib\site-packages\deepchem\models\torch_models\__init__.py)
+Skipped loading modules with pytorch-lightning dependency, missing a dependency. No module named 'lightning'
+Skipped loading some Jax models, missing a dependency. No module named 'jax'
+Skipped loading some PyTorch models, missing a dependency. No module named 'tensorflow'
+C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\utils_fp_downstream.py:69: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[idx])
+C:\Users\zhoutianyang\Desktop\SpecMol-Zip\unimol_env\Lib\site-packages\torch_geometric\deprecation.py:26: UserWarning: 'data.DataLoader' is deprecated, use 'loader.DataLoader' instead
+  warnings.warn(out)
+[ablation] task=bace
+[ablation] device=cpu
+[ablation] seeds=[29]
+[ablation] pair_update_layers=1
+[ablation] note: V0-ctrl uses all-pairs edge_index with edge_weight_3d=1 to isolate the effect of dense all-pairs connectivity from actual Uni-Mol information.
+[ablation] note: V2-stable uses residual-alpha pair updates plus clamp to test whether the original update mechanism was too strong and hurt generalization.
+[ablation] note: V1-bondpair keeps the original bond graph and feeds full Uni-Mol pair heads into attention, avoiding the previous mean-to-scalar edge-weight compression.
+[ablation] variant=V1-bondpair root=C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\down_task_bondpair use_pair_update=1
+Processing data for task bace, dataset all...
+Processing data for task bace, dataset train...
+Processing data for task bace, dataset valid...
+Processing data for task bace, dataset test...
+[ablation] variant=V1-bondpair seed=29 pretrain_epoch=0 loss=16.588952
+[ablation] variant=V1-bondpair seed=29 logreg_epoch=0 valid_auc=0.750347 test_auc=0.475225
+[ablation] wrote_runs_csv=C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\results\bondpair_stability\h3_l1_cm5p0_5p0_d0p1_s29\bace_ablation_runs.csv
+[ablation] wrote_summary_csv=C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\results\bondpair_stability\h3_l1_cm5p0_5p0_d0p1_s29\bace_ablation_summary.csv
+[ablation-summary] variant=V1-bondpair runs=1 valid_auc=0.750347¡À0.000000 test_auc=0.475225¡À0.000000

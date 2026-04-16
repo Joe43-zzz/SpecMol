@@ -1,0 +1,13 @@
+variant,seed,data_root,use_pair_update,pair_update_layers,pair_update_alpha,pair_update_clamp_min,pair_update_clamp_max,pretrain_epochs,logreg_epochs,best_pretrain_loss,best_valid_auc,best_test_auc,best_epoch
+V0,9,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\down_task_2d,0,2,0.1,-5.0,5.0,1,5,16.588635262478604,0.7609375000000002,0.4930699930699931,4
+V0,19,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\down_task_2d,0,2,0.1,-5.0,5.0,1,5,16.588560477519618,0.7505208333333333,0.5284130284130284,4
+V0,29,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\down_task_2d,0,2,0.1,-5.0,5.0,1,5,16.589001001936666,0.7697916666666667,0.5913028413028413,4
+V0-ctrl,9,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\down_task_ctrl,0,2,0.1,-5.0,5.0,1,5,16.588094006605836,0.7611111111111112,0.48925848925848925,4
+V0-ctrl,19,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\down_task_ctrl,0,2,0.1,-5.0,5.0,1,5,16.58804817981304,0.7501736111111111,0.5265072765072765,4
+V0-ctrl,29,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\down_task_ctrl,0,2,0.1,-5.0,5.0,1,5,16.58830189626105,0.7675347222222222,0.5887040887040887,4
+V1,9,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\down_task_unimol,0,2,0.1,-5.0,5.0,1,5,16.588099405927842,0.7604166666666667,0.48839223839223844,4
+V1,19,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\down_task_unimol,0,2,0.1,-5.0,5.0,1,5,16.5880442781316,0.749826388888889,0.525987525987526,4
+V1,29,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\down_task_unimol,0,2,0.1,-5.0,5.0,1,5,16.588313927811182,0.7670138888888889,0.5887040887040887,4
+V2-stable,9,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\down_task_unimolupd,1,2,0.1,-5.0,5.0,1,5,16.58622975926169,0.74375,0.4816354816354816,4
+V2-stable,19,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\down_task_unimolupd,1,2,0.1,-5.0,5.0,1,5,16.585952278485145,0.7763888888888889,0.5024255024255024,4
+V2-stable,29,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\down_task_unimolupd,1,2,0.1,-5.0,5.0,1,5,16.586119942372,0.7333333333333334,0.4721067221067221,4

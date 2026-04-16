@@ -1,0 +1,2 @@
+variant,seed,data_root,use_pair_update,pair_update_layers,pair_update_heads,pair_update_alpha,pair_update_clamp_min,pair_update_clamp_max,pretrain_epochs,logreg_epochs,best_pretrain_loss,best_valid_auc,best_test_auc,best_epoch
+V1-bondpair,9,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\down_task_bondpair,1,1,1,0.0,-3.0,3.0,1,1,16.588745064240612,0.7809027777777778,0.5051975051975052,0

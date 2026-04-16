@@ -1,0 +1,3 @@
+variant,seeds,runs,valid_auc_mean,valid_auc_std,test_auc_mean,test_auc_std
+V0,"9,19,29",1,0.7609375000000002,0.0,0.4930699930699931,0.0
+V0-pairlearn,"9,19,29",1,0.7956597222222223,0.0,0.6560984060984061,0.0

@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pt
+pkl/
+logs/
+.venv/
+unimol_env/
+unimol_out/
+*.egg-info/
+.DS_Store

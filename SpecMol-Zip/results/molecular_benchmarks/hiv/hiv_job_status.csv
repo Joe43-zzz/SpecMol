@@ -1,0 +1,2 @@
+variant,seed,status,result_csv,log_path
+V0-pairlearn,9,completed,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\results\molecular_benchmarks\hiv_v0pair_s9\hiv_ablation_runs.csv,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\results\molecular_benchmarks\hiv_v0pair_s9.log

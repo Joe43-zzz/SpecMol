@@ -1,0 +1,9 @@
+No normalization for SPS. Feature removed!
+No normalization for AvgIpc. Feature removed!
+Skipped loading some Tensorflow models, missing a dependency. No module named 'tensorflow'
+Skipped loading modules with pytorch-geometric dependency, missing a dependency. No module named 'dgl'
+Skipped loading modules with transformers dependency. No module named 'transformers'
+cannot import name 'HuggingFaceModel' from 'deepchem.models.torch_models' (C:\Users\zhoutianyang\Desktop\SpecMol-Zip\unimol_env\Lib\site-packages\deepchem\models\torch_models\__init__.py)
+Skipped loading modules with pytorch-lightning dependency, missing a dependency. No module named 'lightning'
+Skipped loading some Jax models, missing a dependency. No module named 'jax'
+Skipped loading some PyTorch models, missing a dependency. No module named 'tensorflow'

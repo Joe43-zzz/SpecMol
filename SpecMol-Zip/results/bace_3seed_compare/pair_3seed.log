@@ -1,0 +1,146 @@
+No normalization for SPS. Feature removed!
+No normalization for AvgIpc. Feature removed!
+Skipped loading some Tensorflow models, missing a dependency. No module named 'tensorflow'
+Skipped loading modules with pytorch-geometric dependency, missing a dependency. No module named 'dgl'
+Skipped loading modules with transformers dependency. No module named 'transformers'
+cannot import name 'HuggingFaceModel' from 'deepchem.models.torch_models' (C:\Users\zhoutianyang\Desktop\SpecMol-Zip\unimol_env\Lib\site-packages\deepchem\models\torch_models\__init__.py)
+Skipped loading modules with pytorch-lightning dependency, missing a dependency. No module named 'lightning'
+Skipped loading some Jax models, missing a dependency. No module named 'jax'
+Skipped loading some PyTorch models, missing a dependency. No module named 'tensorflow'
+Namespace(K=10, act_fn='relu', alpha=1, batch_size=512, datafile='in-vitro', dprate=0.5, dropout=0.0, epochs=200, eval_epochs=200, eval_seeds='9,19,29', gpu=-1, hid_dim=512, is_bns=False, lr=0.0001, path='down_task/processed', patience=100, random_seed=9, split_seed=9, task='bace', temperature=0.1, type='tri')
+Processing data for task bace, dataset all...
+C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\utils_fp_downstream.py:69: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[idx])
+C:\Users\zhoutianyang\Desktop\SpecMol-Zip\unimol_env\Lib\site-packages\torch_geometric\deprecation.py:26: UserWarning: 'data.DataLoader' is deprecated, use 'loader.DataLoader' instead
+  warnings.warn(out)
+In Epoch 0th, the train loss is 5.0641560554504395.
+In Epoch 2th, the train loss is 5.059943675994873.
+In Epoch 3th, the train loss is 5.053977012634277.
+In Epoch 4th, the train loss is 5.0534892082214355.
+In Epoch 20th, the train loss is 5.04374361038208.
+In Epoch 49th, the train loss is 5.037875652313232.
+In Epoch 70th, the train loss is 5.03093957901001.
+In Epoch 86th, the train loss is 5.029999732971191.
+In Epoch 98th, the train loss is 5.028066635131836.
+In Epoch 106th, the train loss is 5.024379253387451.
+In Epoch 121th, the train loss is 5.023404598236084.
+In Epoch 128th, the train loss is 5.0206170082092285.
+In Epoch 130th, the train loss is 5.019314765930176.
+In Epoch 151th, the train loss is 5.016136169433594.
+In Epoch 170th, the train loss is 5.01045036315918.
+In Epoch 179th, the train loss is 5.008516788482666.
+In Epoch 184th, the train loss is 5.007507801055908.
+In Epoch 187th, the train loss is 5.006165981292725.
+In Epoch 194th, the train loss is 5.003724575042725.
+Loading 195th eppoch
+main_pretrain.py:231: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  spec_model.load_state_dict(torch.load('pkl/best_spec_model_' + args.task + tag + '.pkl'))
+Processing data for task bace, dataset train...
+Processing data for task bace, dataset valid...
+Processing data for task bace, dataset test...
+Val auc in Epoch 0 is 0.31701388888888893
+Test auc in Epoch 0 is 0.4348579348579349
+Val auc in Epoch 1 is 0.4145833333333334
+Test auc in Epoch 1 is 0.5119542619542619
+Val auc in Epoch 2 is 0.6267361111111112
+Test auc in Epoch 2 is 0.3762993762993763
+Val auc in Epoch 3 is 0.6979166666666666
+Test auc in Epoch 3 is 0.44611919611919615
+Val auc in Epoch 4 is 0.7178819444444444
+Test auc in Epoch 4 is 0.46864171864171866
+Val auc in Epoch 6 is 0.7223958333333333
+Test auc in Epoch 6 is 0.4549549549549549
+Val auc in Epoch 13 is 0.7260416666666667
+Test auc in Epoch 13 is 0.4714137214137214
+Val auc in Epoch 16 is 0.73125
+Test auc in Epoch 16 is 0.4767844767844767
+Val auc in Epoch 18 is 0.7355902777777777
+Test auc in Epoch 18 is 0.477997227997228
+Val auc in Epoch 21 is 0.7375
+Test auc in Epoch 21 is 0.4793832293832294
+Val auc in Epoch 22 is 0.7383680555555556
+Test auc in Epoch 22 is 0.4876992376992377
+Val auc in Epoch 23 is 0.7394097222222222
+Test auc in Epoch 23 is 0.48943173943173945
+Val auc in Epoch 24 is 0.7402777777777778
+Test auc in Epoch 24 is 0.4932432432432432
+Val auc in Epoch 27 is 0.7428819444444444
+Test auc in Epoch 27 is 0.5029452529452529
+Val auc in Epoch 29 is 0.7493055555555556
+Test auc in Epoch 29 is 0.5093555093555093
+Val auc in Epoch 30 is 0.7496527777777777
+Test auc in Epoch 30 is 0.5159390159390159
+Val auc in Epoch 31 is 0.7555555555555556
+Test auc in Epoch 31 is 0.5246015246015245
+Val auc in Epoch 32 is 0.757638888888889
+Test auc in Epoch 32 is 0.5346500346500347
+Val auc in Epoch 34 is 0.7600694444444445
+Test auc in Epoch 34 is 0.5375952875952876
+Val auc in Epoch 35 is 0.7670138888888889
+Test auc in Epoch 35 is 0.5509355509355509
+Val auc in Epoch 38 is 0.7725694444444444
+Test auc in Epoch 38 is 0.5727650727650728
+Val auc in Epoch 40 is 0.7725694444444445
+Test auc in Epoch 40 is 0.5906098406098407
+Val auc in Epoch 41 is 0.7772569444444445
+Test auc in Epoch 41 is 0.6070686070686071
+Val auc in Epoch 42 is 0.7788194444444445
+Test auc in Epoch 42 is 0.6145183645183645
+Val auc in Epoch 44 is 0.7809027777777777
+Test auc in Epoch 44 is 0.6373873873873874
+Val auc in Epoch 45 is 0.7838541666666667
+Test auc in Epoch 45 is 0.6515939015939015
+Val auc in Epoch 46 is 0.7840277777777778
+Test auc in Epoch 46 is 0.6604296604296604
+Val auc in Epoch 48 is 0.7857638888888889
+Test auc in Epoch 48 is 0.6775814275814276
+Val auc in Epoch 49 is 0.7890625
+Test auc in Epoch 49 is 0.683991683991684
+Val auc in Epoch 53 is 0.7909722222222223
+Test auc in Epoch 53 is 0.7092862092862092
+Val auc in Epoch 57 is 0.7947916666666666
+Test auc in Epoch 57 is 0.7165627165627166
+Val auc in Epoch 58 is 0.7972222222222222
+Test auc in Epoch 58 is 0.7205474705474706
+Val auc in Epoch 66 is 0.7989583333333333
+Test auc in Epoch 66 is 0.7597020097020097
+Val auc in Epoch 71 is 0.8020833333333334
+Test auc in Epoch 71 is 0.7917532917532918
+Val auc in Epoch 72 is 0.8060763888888889
+Test auc in Epoch 72 is 0.7986832986832987
+Val auc in Epoch 80 is 0.8088541666666667
+Test auc in Epoch 80 is 0.8179140679140681
+Val auc in Epoch 86 is 0.8121527777777778
+Test auc in Epoch 86 is 0.8381843381843381
+Best Test Auc for bace in Epoch 86 is 0.8381843381843381
+Processing data for task bace, dataset train...
+C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\utils_fp_downstream.py:69: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[idx])
+C:\Users\zhoutianyang\Desktop\SpecMol-Zip\unimol_env\Lib\site-packages\torch_geometric\deprecation.py:26: UserWarning: 'data.DataLoader' is deprecated, use 'loader.DataLoader' instead
+  warnings.warn(out)
+Processing data for task bace, dataset valid...
+Processing data for task bace, dataset test...
+Val auc in Epoch 0 is 0.7715277777777777
+Test auc in Epoch 0 is 0.853950103950104
+Val auc in Epoch 1 is 0.7722222222222221
+Test auc in Epoch 1 is 0.8615731115731116
+Val auc in Epoch 2 is 0.7736111111111111
+Test auc in Epoch 2 is 0.8605336105336105
+Val auc in Epoch 3 is 0.7802083333333333
+Test auc in Epoch 3 is 0.8612266112266113
+Best Test Auc for bace in Epoch 3 is 0.8612266112266113
+Processing data for task bace, dataset train...
+C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\utils_fp_downstream.py:69: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.data, self.slices = torch.load(self.processed_paths[idx])
+C:\Users\zhoutianyang\Desktop\SpecMol-Zip\unimol_env\Lib\site-packages\torch_geometric\deprecation.py:26: UserWarning: 'data.DataLoader' is deprecated, use 'loader.DataLoader' instead
+  warnings.warn(out)
+Processing data for task bace, dataset valid...
+Processing data for task bace, dataset test...
+Val auc in Epoch 0 is 0.7432291666666666
+Test auc in Epoch 0 is 0.8608801108801108
+Val auc in Epoch 1 is 0.7557291666666667
+Test auc in Epoch 1 is 0.8575883575883576
+Val auc in Epoch 2 is 0.7564236111111111
+Test auc in Epoch 2 is 0.8581081081081081
+Val auc in Epoch 22 is 0.7581597222222222
+Test auc in Epoch 22 is 0.8594941094941094

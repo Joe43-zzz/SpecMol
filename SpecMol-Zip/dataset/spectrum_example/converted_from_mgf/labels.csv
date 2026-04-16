@@ -1,0 +1,7 @@
+spectrum_id,label,weight,split
+spec_000,1,1.0,train
+spec_001,0,1.0,train
+spec_002,1,1.0,train
+spec_003,0,1.0,valid
+spec_004,1,1.0,test
+spec_005,0,1.0,test

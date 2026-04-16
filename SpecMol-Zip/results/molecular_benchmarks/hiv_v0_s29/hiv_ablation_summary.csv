@@ -1,0 +1,2 @@
+variant,seeds,runs,valid_auc_mean,valid_auc_std,test_auc_mean,test_auc_std
+V0,29,1,0.7127976190476191,0.0,0.723621545414164,0.0

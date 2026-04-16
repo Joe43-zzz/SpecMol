@@ -1,0 +1,10 @@
+variant,seed,data_root,use_pair_update,pair_update_layers,pair_update_heads,pair_update_alpha,pair_update_clamp_min,pair_update_clamp_max,pair_edge_attr_dim,pair_input_attr_name,pretrain_epochs,logreg_epochs,best_pretrain_loss,best_valid_auc,best_test_auc,best_epoch
+V0,9,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\molecular_benchmarks\bbbp\down_task_2d,0,2,1,0.1,-5.0,5.0,11,edge_attr,1,5,16.619317340523427,0.9380822981366459,0.6729935446574815,4
+V0,19,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\molecular_benchmarks\bbbp\down_task_2d,0,2,1,0.1,-5.0,5.0,11,edge_attr,1,5,16.619073798575783,0.9347826086956522,0.6714519703246942,4
+V0,29,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\molecular_benchmarks\bbbp\down_task_2d,0,2,1,0.1,-5.0,5.0,11,edge_attr,1,5,16.619439831780944,0.9373059006211181,0.6985258695442721,4
+V0-pairlearn,9,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\molecular_benchmarks\bbbp\down_task_2d,1,2,3,0.1,-5.0,5.0,11,edge_attr,1,5,16.620644932812834,0.9263392857142857,0.667694382888525,4
+V0-pairlearn,19,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\molecular_benchmarks\bbbp\down_task_2d,1,2,3,0.1,-5.0,5.0,11,edge_attr,1,5,16.62065754619634,0.9270186335403726,0.6794488871760285,4
+V0-pairlearn,29,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\molecular_benchmarks\bbbp\down_task_2d,1,2,3,0.1,-5.0,5.0,11,edge_attr,1,5,16.620522860629467,0.9371118012422361,0.6622988727237691,4
+V0-ctrl,9,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\molecular_benchmarks\bbbp\down_task_ctrl,0,2,1,0.1,-5.0,5.0,11,edge_attr,1,5,16.618714135671844,0.938082298136646,0.6731862414490799,4
+V0-ctrl,19,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\molecular_benchmarks\bbbp\down_task_ctrl,0,2,1,0.1,-5.0,5.0,11,edge_attr,1,5,16.618481596291446,0.9346855590062112,0.6713556219288949,4
+V0-ctrl,29,C:\Users\zhoutianyang\Desktop\SpecMol-Zip\SpecMol-Zip\molecular_benchmarks\bbbp\down_task_ctrl,0,2,1,0.1,-5.0,5.0,11,edge_attr,1,5,16.618599678851506,0.9376940993788819,0.6978514307736775,4
