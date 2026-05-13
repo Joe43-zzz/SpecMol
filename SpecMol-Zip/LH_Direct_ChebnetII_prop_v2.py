@@ -1,8 +1,13 @@
 """V2 ChebNet II propagation layer.
 
 T5 mode: forward() uses static edge_weight (from PairToEdgeWeight), single Laplacian.
-T6 mode: forward() dynamically updates pair_repr at each K-step via NodeToPairUpdate,
-         recomputing edge_weight and Laplacian per step.
+T6 mode: forward() dynamically updates pair_repr at each K-step via NodeToPairUpdate
+         (bilinear Q·K → pair_dim residual), recomputing edge_weight and Laplacian.
+T7 mode: forward() applies sparse pair-biased multi-head attention each K-step.
+         pair_repr enters as pre-softmax bias on attention logits (bypassing the
+         scalar edge_weight bottleneck); attention output is residually added to
+         Tx_k (hybrid spectral-attention); pre-softmax logits feed back into
+         pair_repr. Mutually exclusive with T6.
 """
 
 import math
@@ -14,6 +19,7 @@ import torch.nn.functional as F
 from torch.nn import Parameter
 
 from node_to_pair_update import NodeToPairUpdate
+from pair_biased_attention import PairBiasedSparseAttention
 
 
 def cheby(i, x):
@@ -49,7 +55,9 @@ def gamma_l(slides, beta_a_l, beta_b_l):
 
 
 class ChebnetII_prop_V2(MessagePassing):
-    def __init__(self, K, node_dim=None, pair_dim=None, proj_dim=32, **kwargs):
+    def __init__(self, K, node_dim=None, pair_dim=None, proj_dim=32,
+                 t7=False, t7_num_heads=4, t7_head_dim=32,
+                 t7_dropout=0.0, t7_init_std=0.02, **kwargs):
         super(ChebnetII_prop_V2, self).__init__(aggr='add', **kwargs)
 
         self.K = K
@@ -68,14 +76,28 @@ class ChebnetII_prop_V2(MessagePassing):
         self.slides_l = Parameter(torch.zeros(self.K + 1), requires_grad=True)
         self.slides_h = Parameter(torch.zeros(self.K + 1), requires_grad=True)
 
-        # T6: NodeToPairUpdate for dynamic pair_repr (shared across K-steps)
-        if node_dim is not None and pair_dim is not None:
+        # T6 / T7 are mutually exclusive: T6 = bilinear pair update only;
+        # T7 = pair-biased multi-head attention with bidirectional pair update
+        # and Tx_k residual injection.
+        if t7 and node_dim is not None and pair_dim is not None:
+            self.pair_attn = PairBiasedSparseAttention(
+                node_dim=node_dim, pair_dim=pair_dim,
+                num_heads=t7_num_heads, head_dim=t7_head_dim,
+                dropout=t7_dropout, init_std=t7_init_std,
+            )
+            self.t7_enabled = True
+            self.t6_enabled = False
+        elif node_dim is not None and pair_dim is not None:
             self.node_to_pair = NodeToPairUpdate(
                 node_dim=node_dim, pair_dim=pair_dim, proj_dim=proj_dim,
             )
             self.t6_enabled = True
+            self.t7_enabled = False
         else:
             self.t6_enabled = False
+            self.t7_enabled = False
+        self.latest_t6_stats = None
+        self.latest_t7_stats = None
 
     def reset_parameters(self):
         self.temp_low.data.fill_(2.0 / self.K)
@@ -87,6 +109,61 @@ class ChebnetII_prop_V2(MessagePassing):
             dtype=dtype, num_nodes=num_nodes,
         )
         return add_self_loops(edge_index1, norm1, fill_value=-1.0, num_nodes=num_nodes)
+
+    @staticmethod
+    def _edge_weight_stats(edge_weight):
+        edge_weight = edge_weight.detach()
+        return {
+            "mean": float(edge_weight.mean().item()),
+            "std": float(edge_weight.std().item()) if edge_weight.numel() > 1 else 0.0,
+            "min": float(edge_weight.min().item()),
+            "max": float(edge_weight.max().item()),
+            "finite": bool(torch.isfinite(edge_weight).all().item()),
+            "shape": tuple(edge_weight.shape),
+        }
+
+    @staticmethod
+    def _pair_cosine(before, after):
+        before = before.detach().reshape(1, -1).double()
+        after = after.detach().reshape(1, -1).double()
+        cosine = F.cosine_similarity(before, after, dim=1).item()
+        return max(min(cosine, 1.0), -1.0)
+
+    def _update_pair_with_stats(self, t_k, pair_repr_edge, pair_edge_index, step):
+        before = pair_repr_edge
+        after = self.node_to_pair(t_k, before, pair_edge_index)
+        with torch.no_grad():
+            delta = after.detach() - before.detach()
+            pair_norm = before.detach().norm().clamp_min(1e-12)
+            drift = self._pair_cosine(before, after)
+            self.latest_t6_stats["updates"].append({
+                "step": int(step),
+                "delta_pair_ratio": float((delta.norm() / pair_norm).item()),
+                "pair_cosine_to_original": float(drift),
+            })
+        return after
+
+    def _update_with_t7(self, t_k, pair_repr_edge, pair_edge_index, step):
+        """Apply T7 attention: returns (out_attn for residual, updated pair_repr).
+
+        out_attn is node-side residual delta [N, node_dim] to add to Tx_k.
+        pair_delta is added to pair_repr_edge here (forward-local).
+        """
+        before = pair_repr_edge
+        out_attn, pair_delta = self.pair_attn(t_k, before, pair_edge_index)
+        after = before + pair_delta
+        with torch.no_grad():
+            pair_norm = before.detach().norm().clamp_min(1e-12)
+            pair_delta_norm = pair_delta.detach().norm()
+            drift = self._pair_cosine(before, after)
+            out_norm = out_attn.detach().norm()
+            self.latest_t7_stats["updates"].append({
+                "step": int(step),
+                "delta_pair_ratio": float((pair_delta_norm / pair_norm).item()),
+                "pair_cosine_to_original": float(drift),
+                "out_attn_norm": float(out_norm.item()),
+            })
+        return out_attn, after
 
     def forward(self, x, edge_index, edge_weight, highpass=True,
                 pair_repr_edge=None, pair_edge_index=None, batch=None,
@@ -124,27 +201,67 @@ class ChebnetII_prop_V2(MessagePassing):
 
         num_nodes = x.size(self.node_axis)
         t6 = self.t6_enabled and pair_repr_edge is not None
+        t7 = self.t7_enabled and pair_repr_edge is not None
+        self.latest_t6_stats = {
+            "highpass": bool(highpass),
+            "updates": [],
+            "edge_weights": [],
+        } if t6 else None
+        self.latest_t7_stats = {
+            "highpass": bool(highpass),
+            "updates": [],
+            "edge_weights": [],
+        } if t7 else None
+        # Pick a single "dynamic" flag for branches that are common to T6 and T7
+        dynamic = t6 or t7
+        dyn_stats = self.latest_t6_stats if t6 else self.latest_t7_stats
 
         # --- Step 0: initial Laplacian from edge_weight ---
         edge_index_tilde, norm_tilde = self._build_laplacian(
             edge_index, edge_weight, x.dtype, num_nodes,
         )
+        if dynamic:
+            dyn_stats["edge_weights"].append({
+                "step": 1,
+                **self._edge_weight_stats(edge_weight),
+            })
 
         Tx_0 = x
         Tx_1 = self.propagate(edge_index_tilde, x=x, norm=norm_tilde, size=None)
 
-        # T6: update pair_repr after Tx_1
+        # T7 accumulates attention outputs SEPARATELY from the Chebyshev
+        # recurrence. Injecting out_attn into Tx_k inside the loop would amplify
+        # by 2^K through the `Tx_{k+1} = 2*L*Tx_k - Tx_{k-1}` recurrence (a
+        # 2000× blow-up was observed in smoke testing). Keeping Tx_k purely
+        # spectral preserves the Chebyshev polynomial structure; pair info
+        # still reaches node embeddings via (a) the accumulated attn_acc added
+        # to `out` at the end, and (b) the per-step Laplacian rebuilt from the
+        # updated pair_repr (T6-style indirect path).
+        attn_acc = torch.zeros_like(Tx_1) if t7 else None
+
+        # Dynamic pair update after Tx_1
         if t6:
-            pair_repr_edge = self.node_to_pair(Tx_1, pair_repr_edge, pair_edge_index)
+            pair_repr_edge = self._update_pair_with_stats(
+                Tx_1, pair_repr_edge, pair_edge_index, step=1,
+            )
+        elif t7:
+            out_attn, pair_repr_edge = self._update_with_t7(
+                Tx_1, pair_repr_edge, pair_edge_index, step=1,
+            )
+            attn_acc = attn_acc + coe[1] * out_attn
 
         out = coe[0] / 2 * Tx_0 + coe[1] * Tx_1
 
         for i in range(2, self.K + 1):
-            # T6: recompute edge_weight + Laplacian from updated pair_repr
-            if t6:
+            # Recompute edge_weight + Laplacian from updated pair_repr (T6 or T7)
+            if dynamic:
                 edge_weight = pair_to_ew(
                     pair_repr_edge, pair_edge_index, edge_index, batch,
                 )
+                dyn_stats["edge_weights"].append({
+                    "step": int(i),
+                    **self._edge_weight_stats(edge_weight),
+                })
                 edge_index_tilde, norm_tilde = self._build_laplacian(
                     edge_index, edge_weight, x.dtype, num_nodes,
                 )
@@ -153,13 +270,23 @@ class ChebnetII_prop_V2(MessagePassing):
             Tx_2 = 2 * Tx_2 - Tx_0
             out = out + coe[i] * Tx_2
 
-            # T6: update pair_repr after each Tx_k
+            # Dynamic pair update after Tx_k
             if t6:
-                pair_repr_edge = self.node_to_pair(Tx_2, pair_repr_edge, pair_edge_index)
+                pair_repr_edge = self._update_pair_with_stats(
+                    Tx_2, pair_repr_edge, pair_edge_index, step=i,
+                )
+            elif t7:
+                out_attn, pair_repr_edge = self._update_with_t7(
+                    Tx_2, pair_repr_edge, pair_edge_index, step=i,
+                )
+                attn_acc = attn_acc + coe[i] * out_attn
 
             Tx_0, Tx_1 = Tx_1, Tx_2
 
-        if t6:
+        if t7:
+            out = out + attn_acc
+
+        if dynamic:
             return out, pair_repr_edge
         return out
 
