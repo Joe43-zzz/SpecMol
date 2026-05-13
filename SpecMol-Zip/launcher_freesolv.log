@@ -1,0 +1,121 @@
+[2026-05-03 00:27:42] FreeSolv launcher started. 6 cells to run.
+[2026-05-03 00:27:42] Python: D:\SpecMol-Zip\.venv\Scripts\python.exe
+[2026-05-03 00:27:42] Workdir: D:\SpecMol-Zip\SpecMol-Zip
+[2026-05-03 00:27:42] Timeout per cell: 5400s
+[2026-05-03 00:27:42] 
+--- Cell 1/6: baseline_seed_9 ---
+[2026-05-03 00:27:42] Command: D:\SpecMol-Zip\.venv\Scripts\python.exe run_freesolv_baseline.py --seed 9 --gpu 0
+
+============================================================
+BASELINE PRETRAIN seed=9
+============================================================
+  Epoch 0: loss=16.220197 (new best)
+  Early stopping at epoch 636
+  Best epoch: 536, best loss: 16.216967
+  EVAL regression downstream
+    test_rmse=0.7221 (eval epoch 1933)
+
+BASELINE SUMMARY: RMSE = 0.7221 +/- 0.0000
+
+[2026-05-03 00:37:19]   DONE: baseline_seed_9 in 577s
+[2026-05-03 00:37:19] 
+--- Cell 2/6: baseline_seed_19 ---
+[2026-05-03 00:37:19] Command: D:\SpecMol-Zip\.venv\Scripts\python.exe run_freesolv_baseline.py --seed 19 --gpu 0
+
+============================================================
+BASELINE PRETRAIN seed=19
+============================================================
+  Epoch 0: loss=16.220256 (new best)
+  Epoch 100: loss=16.218313 (new best)
+  Epoch 200: loss=16.217710 (new best)
+  Early stopping at epoch 757
+  Best epoch: 657, best loss: 16.216929
+  EVAL regression downstream
+    test_rmse=0.7320 (eval epoch 1700)
+
+BASELINE SUMMARY: RMSE = 0.7270 +/- 0.0050
+
+[2026-05-03 00:46:21]   DONE: baseline_seed_19 in 541s
+[2026-05-03 00:46:21] 
+--- Cell 3/6: baseline_seed_29 ---
+[2026-05-03 00:46:21] Command: D:\SpecMol-Zip\.venv\Scripts\python.exe run_freesolv_baseline.py --seed 29 --gpu 0
+
+============================================================
+BASELINE PRETRAIN seed=29
+============================================================
+  Epoch 0: loss=16.219926 (new best)
+  Epoch 100: loss=16.218241 (new best)
+  Epoch 200: loss=16.217602 (new best)
+  Early stopping at epoch 567
+  Best epoch: 467, best loss: 16.216970
+  EVAL regression downstream
+    test_rmse=0.8272 (eval epoch 1642)
+
+BASELINE SUMMARY: RMSE = 0.7604 +/- 0.0474
+
+[2026-05-03 06:59:45]   DONE: baseline_seed_29 in 22404s
+[2026-05-03 06:59:45] 
+--- Cell 4/6: v2t5_seed_9 ---
+[2026-05-03 06:59:45] Command: D:\SpecMol-Zip\.venv\Scripts\python.exe run_freesolv_v2t5.py --seed 9 --gpu 0
+
+============================================================
+V2-T5 PRETRAIN seed=9
+============================================================
+PairToEdgeWeight bias init: 5.0000
+  Epoch 0: loss=16.220304 (new best), bias=4.9997
+  Best epoch: 983, best loss: 16.216833
+  PairToEdgeWeight bias final: 4.7091
+  EVAL regression downstream
+    test_rmse=0.6297 (eval epoch 1986)
+
+V2-T5 SUMMARY: RMSE = 0.6297 +/- 0.0000
+
+[2026-05-03 11:14:56]   DONE: v2t5_seed_9 in 15311s
+[2026-05-03 11:14:56] 
+--- Cell 5/6: v2t5_seed_19 ---
+[2026-05-03 11:14:56] Command: D:\SpecMol-Zip\.venv\Scripts\python.exe run_freesolv_v2t5.py --seed 19 --gpu 0
+
+============================================================
+V2-T5 PRETRAIN seed=19
+============================================================
+PairToEdgeWeight bias init: 5.0000
+  Epoch 0: loss=16.220760 (new best), bias=4.9997
+  Epoch 100: loss=16.218395 (new best), bias=4.9703
+  Early stopping at epoch 642
+  Best epoch: 542, best loss: 16.216970
+  PairToEdgeWeight bias final: 4.8128
+  EVAL regression downstream
+    test_rmse=0.6889 (eval epoch 1691)
+
+V2-T5 SUMMARY: RMSE = 0.6593 +/- 0.0296
+
+[2026-05-03 12:36:52]   DONE: v2t5_seed_19 in 4916s
+[2026-05-03 12:36:52] 
+--- Cell 6/6: v2t5_seed_29 ---
+[2026-05-03 12:36:52] Command: D:\SpecMol-Zip\.venv\Scripts\python.exe run_freesolv_v2t5.py --seed 29 --gpu 0
+
+============================================================
+V2-T5 PRETRAIN seed=29
+============================================================
+PairToEdgeWeight bias init: 5.0000
+  Epoch 0: loss=16.220043 (new best), bias=4.9997
+  Early stopping at epoch 689
+  Best epoch: 589, best loss: 16.216984
+  PairToEdgeWeight bias final: 4.7984
+  EVAL regression downstream
+    test_rmse=0.7053 (eval epoch 1135)
+
+V2-T5 SUMMARY: RMSE = 0.6746 +/- 0.0325
+
+[2026-05-03 12:57:31]   DONE: v2t5_seed_29 in 1239s
+[2026-05-03 12:57:31] 
+============================================================
+[2026-05-03 12:57:31] LAUNCHER COMPLETE
+[2026-05-03 12:57:31] Status: {
+  "baseline_seed_9": "done",
+  "baseline_seed_19": "done",
+  "baseline_seed_29": "done",
+  "v2t5_seed_9": "done",
+  "v2t5_seed_19": "done",
+  "v2t5_seed_29": "done"
+}

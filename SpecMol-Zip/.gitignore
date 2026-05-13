@@ -3,6 +3,9 @@ __pycache__/
 *.pt
 pkl/
 logs/
+hpc/logs/
+hpc/results/
+hpc/slurm/
 .venv/
 unimol_env/
 unimol_out/

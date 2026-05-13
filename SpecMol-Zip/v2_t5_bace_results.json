@@ -1,0 +1,123 @@
+{
+  "experiment": "V2-T5 Static-pair Weighted Laplacian on BACE",
+  "model": "LH_Direct_V2 (ChebNetII_V2 + PairToEdgeWeight + FP MLP)",
+  "data_root": "down_task_v2",
+  "results_per_seed": {
+    "seed_9": {
+      "pretrain_best_epoch": 993,
+      "pretrain_final_loss": 18.6665,
+      "early_stopped": true,
+      "bias_init": 5.0,
+      "bias_final": 4.8427,
+      "loss_history_sample": [
+        18.670132,
+        18.669101,
+        18.668571,
+        18.668387,
+        18.667774,
+        18.666853
+      ],
+      "eval_splits": {
+        "split_9": {
+          "test_auc": 0.8567,
+          "best_eval_epoch": 671
+        },
+        "split_19": {
+          "test_auc": 0.8351,
+          "best_eval_epoch": 530
+        },
+        "split_29": {
+          "test_auc": 0.8503,
+          "best_eval_epoch": 671
+        }
+      },
+      "mean_test_auc": 0.8474
+    },
+    "seed_19": {
+      "pretrain_best_epoch": 996,
+      "pretrain_final_loss": 18.6666,
+      "early_stopped": false,
+      "bias_init": 5.0,
+      "bias_final": 4.8409,
+      "loss_history_sample": [
+        18.669521,
+        18.66871,
+        18.66849,
+        18.668267,
+        18.668206,
+        18.667973,
+        18.667673,
+        18.667088,
+        18.666762
+      ],
+      "eval_splits": {
+        "split_9": {
+          "test_auc": 0.8316,
+          "best_eval_epoch": 1509
+        },
+        "split_19": {
+          "test_auc": 0.8306,
+          "best_eval_epoch": 1051
+        },
+        "split_29": {
+          "test_auc": 0.8252,
+          "best_eval_epoch": 1226
+        }
+      },
+      "mean_test_auc": 0.8291
+    },
+    "seed_29": {
+      "pretrain_best_epoch": 997,
+      "pretrain_final_loss": 18.6665,
+      "early_stopped": false,
+      "bias_init": 5.0,
+      "bias_final": 4.8457,
+      "loss_history_sample": [
+        18.669785,
+        18.668907,
+        18.668515,
+        18.668262,
+        18.668194,
+        18.668035,
+        18.667712,
+        18.667167,
+        18.666778
+      ],
+      "eval_splits": {
+        "split_9": {
+          "test_auc": 0.8371,
+          "best_eval_epoch": 767
+        },
+        "split_19": {
+          "test_auc": 0.8325,
+          "best_eval_epoch": 562
+        },
+        "split_29": {
+          "test_auc": 0.8365,
+          "best_eval_epoch": 1173
+        }
+      },
+      "mean_test_auc": 0.8354
+    }
+  },
+  "summary": {
+    "all_9_test_aucs": [
+      0.8567,
+      0.8351,
+      0.8503,
+      0.8316,
+      0.8306,
+      0.8252,
+      0.8371,
+      0.8325,
+      0.8365
+    ],
+    "grand_mean": 0.8373,
+    "grand_std": 0.0094,
+    "per_seed_means": [
+      0.8474,
+      0.8291,
+      0.8354
+    ]
+  }
+}

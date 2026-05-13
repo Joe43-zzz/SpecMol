@@ -10,13 +10,21 @@ This project evaluates whether Uni-Mol 3D molecular information can improve Spec
 - **V1**: 2D + static Uni-Mol 3D edge weights
 - **V2 / V2-stable**: 2D + learnable Uni-Mol pair update mechanism
 
-**Current focus**: BACE dataset. Do not expand to more datasets unless explicitly asked.
+**Current focus**: BACE (post-B4 re-run) + BBBP (done) + HIV (onboarding). Regression (FreeSolv) and multi-label (ClinTox/Tox21) deferred to a later phase.
+
+Pipeline entry points after Stage 0/1 cleanup (2026-05-13):
+- Task-agnostic orchestration: `TASK=<bace|bbbp|hiv> bash hpc/run_dataset_pipeline.sh [phase]`
+- Multi-job submit: `bash hpc/submit_dataset_all.sh <task>`
+- Unified collector: `python hpc/collect_results.py --task <task> --output hpc/results/<task>_all_results.json`
+- Data dir convention: `down_task_<task>_v2/` (V2-T5/T6 with pair_repr) and `down_task_<task>_unifold/` (V0 on Uni-Mol fold split). BACE legacy `down_task_v2/` is the pre-B4 archive.
 
 ## Environment
 
-```bash
-conda activate dgcl   # Python 3.7, PyTorch 1.13.1 (CUDA 11.7), PyG 2.3.1, RDKit, DeepChem
+System Python 3.12 (no conda needed):
 ```
+C:\Users\zhoutianyang\AppData\Local\Programs\Python\Python312\python.exe
+```
+Key packages: PyTorch 2.11.0 (CPU), PyG 2.7.0, scipy, numpy, scikit-learn.
 
 All code runs from inside `SpecMol-Zip/` (the inner directory).
 
@@ -114,3 +122,14 @@ Small, scoped commits. Examples:
 - `docs: add experiment protocol for V0/V1/V2`
 
 Do not bundle unrelated changes. Never silently change split protocol, metrics, or seed lists.
+
+## HPC / Slurm Rules
+
+When running on MBZUAI HPC or any Slurm-managed GPU server:
+
+- GPU training must run through `sbatch` or `srun`; do not run GPU jobs directly on login nodes.
+- Do not manually set or widen `CUDA_VISIBLE_DEVICES`; Slurm owns GPU visibility.
+- Training commands should pass `--gpu 0` and treat `cuda:0` as the Slurm-visible allocated GPU.
+- Do not hard-code physical GPU IDs such as `cuda:1`, `cuda:2`, etc.
+- Before launching training, check `echo $CUDA_VISIBLE_DEVICES`, `squeue -u $USER`, and, when needed, `nvidia-smi`.
+- Never use another user's GPU allocation; this can risk account suspension.

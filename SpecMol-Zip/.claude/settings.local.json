@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd.exe /c 'where /R C:\\\\Users\\\\zhoutianyang python.exe 2>NUL')",
+      "Read(//c/Users/zhoutianyang/**)",
+      "Read(//d/c/**)",
+      "Read(//c/ProgramData/**)",
+      "Bash(cmd.exe /c \"if exist C:\\\\Users\\\\zhoutianyang\\\\anaconda3\\\\python.exe echo FOUND_anaconda3\")",
+      "Bash(cmd.exe /c \"if exist C:\\\\Users\\\\zhoutianyang\\\\miniconda3\\\\python.exe echo FOUND_miniconda3\")",
+      "Bash(cmd.exe /c \"if exist C:\\\\Users\\\\zhoutianyang\\\\.conda\\\\environments.txt type C:\\\\Users\\\\zhoutianyang\\\\.conda\\\\environments.txt\")",
+      "Bash(ls /d/SpecMol-Zip/SpecMol-Zip/*.bat)",
+      "Read(//d/SpecMol-Zip/**)",
+      "Bash(python:*)"
+    ]
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "experiment": "Baseline B - SpecMol V0 (2D-only) on BACE",
+  "model": "LH_Direct (ChebNetII + FP MLP, pair_repr=None)",
+  "code_version": "main branch, model_gnn_pre.py (non-v2)",
+  "dataset": "BACE (1513 molecules, scaffold split 80/10/10)",
+  "data_root": "down_task",
+  "fingerprint_type": "tri (PubChem+MACCS+ErG, 1489 dims)",
+  "hyperparams": {
+    "batch_size": 512,
+    "pretrain_epochs": 1000,
+    "eval_epochs": 2000,
+    "hid_dim": 512,
+    "K": 10,
+    "lr": 0.0001,
+    "patience": 100,
+    "dprate": 0.5,
+    "dropout": 0.0,
+    "alpha": 1,
+    "temperature": 0.1
+  },
+  "hardware": {
+    "gpu": "NVIDIA RTX 3050 Laptop (4GB VRAM)",
+    "driver": "572.70",
+    "cuda_runtime": "11.7 (torch 1.13.1+cu117)",
+    "python": "3.8.10",
+    "pyg": "2.3.1"
+  },
+  "results_per_seed": {
+    "seed_9": {
+      "pretrain_best_epoch": 986,
+      "pretrain_final_loss": 18.6664,
+      "early_stopped": true,
+      "eval_splits": {
+        "split_9":  {"test_auc": 0.7610, "best_eval_epoch": 492},
+        "split_19": {"test_auc": 0.8282, "best_eval_epoch": 43},
+        "split_29": {"test_auc": 0.8040, "best_eval_epoch": 399}
+      },
+      "mean_test_auc": 0.7977
+    },
+    "seed_19": {
+      "pretrain_best_epoch": 985,
+      "pretrain_final_loss": 18.6665,
+      "early_stopped": true,
+      "eval_splits": {
+        "split_9":  {"test_auc": 0.8026, "best_eval_epoch": 1250},
+        "split_19": {"test_auc": 0.8307, "best_eval_epoch": 1833},
+        "split_29": {"test_auc": 0.8352, "best_eval_epoch": 74}
+      },
+      "mean_test_auc": 0.8228
+    },
+    "seed_29": {
+      "pretrain_best_epoch": 1000,
+      "pretrain_final_loss": 18.6665,
+      "early_stopped": false,
+      "eval_splits": {
+        "split_9":  {"test_auc": 0.7100, "best_eval_epoch": 341},
+        "split_19": {"test_auc": 0.7870, "best_eval_epoch": 53},
+        "split_29": {"test_auc": 0.8125, "best_eval_epoch": 110}
+      },
+      "mean_test_auc": 0.7698
+    }
+  },
+  "summary": {
+    "all_9_test_aucs": [0.7610, 0.8026, 0.7100],
+    "all_9_mean": 0.7579,
+    "all_9_std": 0.0379,
+    "per_pretrain_seed_means": [0.7977, 0.8228, 0.7698],
+    "grand_mean_across_all_9_runs": 0.7968,
+    "grand_std_across_all_9_runs": 0.0389,
+    "note": "Grand mean computed over all 9 (pretrain_seed x eval_split) runs"
+  },
+  "bugs_encountered": [
+    "argparse --K lacks type=int; workaround: omit --K flag to use default int(10)",
+    "ChebnetII_prop.forward() missing edge_index_for_pair kwarg; fixed by adding edge_index_for_pair=None to signature",
+    "Missing networkx dependency; installed via pip"
+  ],
+  "code_changes": [
+    "LH_Direct_ChebnetII_prop.py line 109: added edge_index_for_pair=None to forward() signature"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "task": "bbbp",
+  "split": "unimol_scaffold_fold",
+  "date": "2026-05-13",
+  "note": "All variants use Uni-Mol fold split. Each train seed runs 3 eval_seeds (9,19,29).",
+  "v0_baseline": {
+    "description": "V0 baseline (no pair_repr)",
+    "results": {
+      "seed9":  {"best_test_auc": 0.7959, "best_epoch": 233},
+      "seed19": {"best_test_auc": 0.8651, "best_epoch": 767},
+      "seed29": {"best_test_auc": 0.8455, "best_epoch": 332}
+    },
+    "grand_mean": 0.836,
+    "std": 0.035
+  },
+  "v2_t5_static_pair": {
+    "description": "V2-T5 static Uni-Mol pair_repr edge weighting",
+    "results": {
+      "seed9":  {"eval_seed_9": 0.8256, "eval_seed_19": 0.8767, "eval_seed_29": 0.8828, "mean": 0.862},
+      "seed19": {"eval_seed_9": 0.8418, "eval_seed_19": 0.8498, "eval_seed_29": 0.8240, "mean": 0.838},
+      "seed29": {"eval_seed_9": 0.8460, "eval_seed_19": 0.9069, "eval_seed_29": 0.9086, "mean": 0.887}
+    },
+    "grand_mean": 0.862,
+    "std": 0.025
+  },
+  "t6_dynamic_pair_node": {
+    "description": "T6 bidirectional dynamic pair-node update",
+    "results": {
+      "seed9":  {"eval_seed_9": 0.8793, "eval_seed_19": 0.8695, "eval_seed_29": 0.8571, "mean": 0.869},
+      "seed19": {"eval_seed_9": 0.8099, "eval_seed_19": 0.7987, "eval_seed_29": 0.7926, "mean": 0.800},
+      "seed29": {"eval_seed_9": 0.8357, "eval_seed_19": 0.8614, "eval_seed_29": 0.8527, "mean": 0.850}
+    },
+    "grand_mean": 0.840,
+    "std": 0.035
+  },
+  "summary": {
+    "V0":    0.836,
+    "V2-T5": 0.862,
+    "T6":    0.840,
+    "best":  "V2-T5"
+  }
+}

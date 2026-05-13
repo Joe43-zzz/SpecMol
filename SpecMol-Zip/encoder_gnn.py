@@ -10,13 +10,13 @@ class GINNet(torch.nn.Module):
     
         super(GINNet, self).__init__()
         
-        self.gin1 = GINEConv(nn=Linear(93,512).cuda(), eps=eps, train_eps=train_eps).cuda()
-        self.gin2 = GINEConv(nn=Linear(512,1024).cuda(), eps=eps, train_eps=train_eps).cuda()
-        self.gin3 = GINEConv(nn=Linear(1024,512).cuda(), eps=eps, train_eps=train_eps).cuda()
+        self.gin1 = GINEConv(nn=Linear(93,512), eps=eps, train_eps=train_eps)
+        self.gin2 = GINEConv(nn=Linear(512,1024), eps=eps, train_eps=train_eps)
+        self.gin3 = GINEConv(nn=Linear(1024,512), eps=eps, train_eps=train_eps)
         
-        self.fc1 = Linear(11,93).cuda()
-        self.fc2 = Linear(11,512).cuda()
-        self.fc3 = Linear(11,1024).cuda()
+        self.fc1 = Linear(11,93)
+        self.fc2 = Linear(11,512)
+        self.fc3 = Linear(11,1024)
 
     def forward(self, x1, edge_index, edge_attr, batch):
         

@@ -212,48 +212,30 @@ def attach_unimol_pair_to_data(data, atoms, pair_payload):
     if encoder_pair_rep.dim() != 3:
         raise ValueError(f"encoder_pair_rep must be 3D after squeeze, got shape {tuple(encoder_pair_rep.shape)}")
 
-    # Uni-Mol pair repr
+    # Uni-Mol pair repr: [num_nodes, num_nodes, pair_dim]
     pair_repr_full = encoder_pair_rep.index_select(0, keep_atom_indices).index_select(1, keep_atom_indices).contiguous()
     if pair_repr_full.size(0) != num_nodes or pair_repr_full.size(1) != num_nodes:
         raise ValueError(
             f"Filtered pair_repr_full shape {tuple(pair_repr_full.shape)} does not match graph node count {num_nodes}"
         )
 
-    src, dst, edge_weight_3d = pair_rep_to_edge_weight(
-        encoder_pair_rep, keep_atom_indices, num_nodes
-    )
+    # All-pairs edge index for pair_repr_edge alignment.
+    # Stored as data.pair_edge_index (PyG auto-increments fields containing 'index').
+    # data.edge_index is kept as the original chem bond graph for ChebNet II.
+    full_edge_index = build_all_pairs_edge_index(num_nodes)
 
-    original_edge_index = data.edge_index.clone()
-    original_edge_attr = data.edge_attr.clone().to(torch.float32)
-    full_edge_index = torch.stack([src, dst], dim=0)
-    full_edge_attr = rebuild_full_edge_attr(original_edge_index, original_edge_attr, full_edge_index)
-
-    data.edge_index = full_edge_index
-    data.edge_attr = full_edge_attr
-    data.edge_weight_3d = edge_weight_3d
-    # Store only edge-aligned pair repr in the batched dataset. The dense
-    # [num_nodes, num_nodes, dim] tensor is validated here but omitted from the
-    # final PyG Data object because variable-size dense tensors cannot be
-    # concatenated by InMemoryDataset.collate across molecules.
     pair_repr_full = pair_repr_full.to(torch.float32)
+    data.pair_edge_index = full_edge_index
     data.pair_repr_edge = pair_repr_full[full_edge_index[0], full_edge_index[1]].to(torch.float32)
     data.pair_repr_dim = int(pair_repr_full.size(-1))
-    data.unimol_num_heads = int(pair_repr_full.size(-1))
 
+    # Validate
     expected_edges = num_nodes * (num_nodes - 1)
-    if data.edge_index.size(1) != expected_edges:
+    if data.pair_edge_index.size(1) != expected_edges:
         raise AssertionError(
-            f"edge_index edge count mismatch: {data.edge_index.size(1)} vs expected {expected_edges}"
+            f"pair_edge_index edge count mismatch: {data.pair_edge_index.size(1)} vs expected {expected_edges}"
         )
-    validate_all_pairs_edge_index(data.edge_index, num_nodes)
-    if data.edge_weight_3d.numel() != expected_edges:
-        raise AssertionError(
-            f"edge_weight_3d length mismatch: {data.edge_weight_3d.numel()} vs expected {expected_edges}"
-        )
-    if not torch.isfinite(data.edge_weight_3d).all():
-        raise AssertionError("edge_weight_3d contains NaN or inf")
-    if pair_repr_full.dtype != torch.float32:
-        raise AssertionError("pair_repr_full must be torch.float32")
+    validate_all_pairs_edge_index(data.pair_edge_index, num_nodes)
     if pair_repr_full.shape != (num_nodes, num_nodes, data.pair_repr_dim):
         raise AssertionError(
             f"pair_repr_full shape mismatch: {tuple(pair_repr_full.shape)}"
@@ -363,7 +345,7 @@ def build_split(
     data_all, slices_all = InMemoryDataset.collate(all_list)
     torch.save((data_all, slices_all), output_dir / "bace_all.pt")
 
-    print("saved processed datasets with Uni-Mol encoder_pair_rep-derived edge_weight_3d")
+    print("saved processed datasets with Uni-Mol pair_repr_edge (chem bond edge_index preserved)")
 
 
 def parse_args():

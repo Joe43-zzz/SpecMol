@@ -1,0 +1,153 @@
+{
+  "experiment": "Baseline V0 on BACE with Uni-Mol fold split",
+  "data_root": "down_task_unifold",
+  "baseline": {
+    "results_per_seed": {
+      "seed_9": {
+        "pretrain_best_epoch": 975,
+        "pretrain_final_loss": 18.6665,
+        "early_stopped": false,
+        "eval_splits": {
+          "restart_9": {
+            "test_auc": 0.6722,
+            "best_eval_epoch": 208
+          },
+          "restart_19": {
+            "test_auc": 0.6195,
+            "best_eval_epoch": 168
+          },
+          "restart_29": {
+            "test_auc": 0.8143,
+            "best_eval_epoch": 419
+          }
+        },
+        "mean_test_auc": 0.702
+      },
+      "seed_19": {
+        "pretrain_best_epoch": 971,
+        "pretrain_final_loss": 18.6665,
+        "early_stopped": false,
+        "eval_splits": {
+          "restart_9": {
+            "test_auc": 0.8255,
+            "best_eval_epoch": 989
+          },
+          "restart_19": {
+            "test_auc": 0.8262,
+            "best_eval_epoch": 769
+          },
+          "restart_29": {
+            "test_auc": 0.8119,
+            "best_eval_epoch": 1292
+          }
+        },
+        "mean_test_auc": 0.8212
+      },
+      "seed_29": {
+        "pretrain_best_epoch": 981,
+        "pretrain_final_loss": 18.6665,
+        "early_stopped": false,
+        "eval_splits": {
+          "restart_9": {
+            "test_auc": 0.8702,
+            "best_eval_epoch": 489
+          },
+          "restart_19": {
+            "test_auc": 0.8675,
+            "best_eval_epoch": 767
+          },
+          "restart_29": {
+            "test_auc": 0.8664,
+            "best_eval_epoch": 738
+          }
+        },
+        "mean_test_auc": 0.868
+      }
+    },
+    "summary": {
+      "all_9_test_aucs": [
+        0.6722,
+        0.6195,
+        0.8143,
+        0.8255,
+        0.8262,
+        0.8119,
+        0.8702,
+        0.8675,
+        0.8664
+      ],
+      "grand_mean": 0.7971,
+      "grand_std": 0.0846
+    }
+  },
+  "fp_only": {
+    "results_per_seed": {
+      "seed_9": {
+        "eval_splits": {
+          "restart_9": {
+            "test_auc": 0.8295,
+            "best_eval_epoch": 64
+          },
+          "restart_19": {
+            "test_auc": 0.8384,
+            "best_eval_epoch": 67
+          },
+          "restart_29": {
+            "test_auc": 0.8287,
+            "best_eval_epoch": 60
+          }
+        },
+        "mean_test_auc": 0.8322
+      },
+      "seed_19": {
+        "eval_splits": {
+          "restart_9": {
+            "test_auc": 0.8515,
+            "best_eval_epoch": 131
+          },
+          "restart_19": {
+            "test_auc": 0.8564,
+            "best_eval_epoch": 128
+          },
+          "restart_29": {
+            "test_auc": 0.8533,
+            "best_eval_epoch": 137
+          }
+        },
+        "mean_test_auc": 0.8537
+      },
+      "seed_29": {
+        "eval_splits": {
+          "restart_9": {
+            "test_auc": 0.8482,
+            "best_eval_epoch": 260
+          },
+          "restart_19": {
+            "test_auc": 0.8517,
+            "best_eval_epoch": 230
+          },
+          "restart_29": {
+            "test_auc": 0.8557,
+            "best_eval_epoch": 177
+          }
+        },
+        "mean_test_auc": 0.8519
+      }
+    },
+    "summary": {
+      "all_9_test_aucs": [
+        0.8295,
+        0.8384,
+        0.8287,
+        0.8515,
+        0.8564,
+        0.8533,
+        0.8482,
+        0.8517,
+        0.8557
+      ],
+      "grand_mean": 0.8459,
+      "grand_std": 0.0103
+    }
+  }
+}

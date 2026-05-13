@@ -1,18 +1,22 @@
 import argparse
+import os
 import time
+import torch
 import torch.optim as optim
+import numpy as np
 import seaborn as sns
-import torch_geometric
 from torch_geometric.loader import DataLoader
-from tqdm import tqdm
-from sklearn.manifold import TSNE
-from utils_fp_downstream import *
-from model_gnn_pre import GNNCon, LH_Direct, LogReg
-from nt_xent import NT_Xent
-from encoder_gnn import GATNet,GINNet
-import random
+from model_gnn_pre import LH_Direct, LogReg
+from utils_fp_downstream import TestbedDataset
 import torch.nn as nn
-from sklearn.metrics import roc_auc_score,r2_score,mean_squared_error
+from train_utils import (
+    calculate_auc,
+    classification_probe_batch,
+    load_model_state_dict,
+    ours_loss,
+    set_seed,
+    train_classification_probe_epoch,
+)
 
 from rdkit import RDLogger
 
@@ -21,34 +25,14 @@ lg = RDLogger.logger()
 lg.setLevel(RDLogger.CRITICAL)
 
 
-def ours_loss(f_l, f_h, f_a, f_fp, alpha=1, tau=0.5): #TODO: loss + fp contra
-    cos = nn.CosineSimilarity(dim=1, eps=1e-6) #TODO dim?eps?
-    s_la = torch.exp(cos(f_l, f_a) / tau)
-    s_lh = torch.exp(cos(f_l, f_h) / tau)
-    s_ha = torch.exp(cos(f_h, f_a) / tau)
-    s_fp_a = torch.exp(cos(f_fp, f_a) / tau)
-    N = f_l.size(0)
-    
-    l_denom = torch.sum(s_la) - s_la + s_lh
-    h_denom = torch.sum(s_ha) - s_ha + s_lh
-    fp_a_denom = torch.sum(s_fp_a)-s_fp_a #+torch.sum(s_fp)-s_fp+torch.sum(s_aa) #sider + bace no
-    #fp_denom = torch.sum(s_fp)- s_fp 
-    
-    loss_l_1 = torch.log(s_la/l_denom)
-    loss_h_1 = torch.log(s_ha/h_denom)
-    loss_fpa = torch.log(s_fp_a/fp_a_denom)
-    
-    loss = torch.sum(loss_l_1) + torch.sum(loss_h_1) + alpha*torch.sum(loss_fpa) 
-    return -loss/N
-
-def train(spect_net,  data_loader, train_optimizer, device):
+def train(spect_net, data_loader, train_optimizer, device, alpha):
     spect_net.train()
     total_loss, total_num, train_bar = 0.0, 0, data_loader
 
     for tem in train_bar:
-        low_x, high_x, spec_x, x_fp = spect_net(tem, args.device)
+        low_x, high_x, spec_x, x_fp = spect_net(tem, device)
         
-        loss = ours_loss(low_x, high_x, spec_x, x_fp, args.alpha)
+        loss = ours_loss(low_x, high_x, spec_x, x_fp, alpha)
         #print("loss", loss)
 
         total_num += len(tem)
@@ -60,35 +44,6 @@ def train(spect_net,  data_loader, train_optimizer, device):
         train_optimizer.step()
 
     return total_loss / total_num
-
-def refine_logreg(tem, device, logreg, n_task):
-    low_x_mean, high_x_mean, spec_x_mean, x_fp, y = spec_model.get_embedding(tem, device)
-    embed = torch.concat([spec_x_mean,x_fp], dim=1)
-    logits = logreg(embed)
-    y = y.reshape(-1, n_task)
-    
-    non_999_indices = y != 999
-    logits = logits[non_999_indices]
-    y = y[non_999_indices]
-    return logits, y
-    
-def calculate_auc(array1,array2,m):
-    M = len(array1)
-    auc_list = []
-    
-    for i in range(m):
-        sub_array1 = array1[i::m]
-        sub_array2 = array2[i::m]
-        non_999_indices = sub_array1 != 999
-        sub_array1 = sub_array1[non_999_indices]
-        sub_array2 = sub_array2[non_999_indices]
-        
-        if np.unique(sub_array1).size>1:
-            auc = roc_auc_score(sub_array1,sub_array2)
-            auc_list.append(auc)
-           
-    return np.mean(auc_list)
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='DGC Train')
@@ -103,14 +58,14 @@ if __name__ == '__main__':
     parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--is_bns', type=bool, default=False)
     parser.add_argument('--act_fn', default='relu', help='activation function')
-    parser.add_argument('--K', default=10)
+    parser.add_argument('--K', default=10, type=int)
     parser.add_argument('--random_seed', default=9, type=int)
     parser.add_argument('--hid_dim', default=512, type=int)
     parser.add_argument('--patience', default=100, type=int)
     parser.add_argument('--lr', default=0.0001, type=float)
     parser.add_argument('--type', default='tri', type=str) #tri 1489 pub 881 maccs 167 erg 441
     parser.add_argument('--alpha', default=1, type=float)
-    parser.add_argument('--split_seed', default=9)
+    parser.add_argument('--split_seed', default=9, type=int)
     parser.add_argument('--use_pair_update', type=int, default=0)
     parser.add_argument('--pair_input_attr_name', type=str, default='edge_attr')
     parser.add_argument('--pair_edge_attr_dim', type=int, default=11)
@@ -123,24 +78,10 @@ if __name__ == '__main__':
     else:
         args.device = "cpu"
     
-    split_seed=args.split_seed
-    temperature =  args.temperature
     batch_size, epochs = args.batch_size, args.epochs
     task, random_seed = args.task, args.random_seed
     
-    def set_seed(seed):
-        random.seed(seed)
-        np.random.seed(seed)
-        torch.manual_seed(seed) # CPU
-        torch.cuda.manual_seed(seed) # GPU
-        torch.cuda.manual_seed_all(seed) # All GPU
-        os.environ['PYTHONHASHSEED'] = str(seed)
-        torch.backends.cudnn.deterministic = True 
-        torch.backends.cudnn.benchmark = False
-    
     set_seed(random_seed)
-    
-    LOG_INTERVAL = 20
     
     clr_tasks = {'bbbp': 1, 'hiv': 1, 'bace': 1, 'tox21': 12, 'clintox': 2, 'sider': 27, 'MUV': 17, 'toxcast':617, 'PCBA':128, 'ecoli':1}
     task_num = clr_tasks[task]
@@ -169,9 +110,8 @@ if __name__ == '__main__':
     tag = str(int(time.time()))
     best_t = 0
     for epoch in range(0, epochs + 1):
-        start = time.time()
         data_loader = DataLoader(data, batch_size=batch_size, shuffle=True)
-        train_loss = train(spec_model, data_loader, optimizer, args.device)
+        train_loss = train(spec_model, data_loader, optimizer, args.device, args.alpha)
 
         if train_loss < best_loss:
             best_loss = train_loss
@@ -189,7 +129,7 @@ if __name__ == '__main__':
         
     print('Loading {}th eppoch'.format( best_t + 1 ))
     
-    spec_model.load_state_dict(torch.load('pkl/best_spec_model_' + args.task + tag + '.pkl'))
+    spec_model.load_state_dict(load_model_state_dict('pkl/best_spec_model_' + args.task + tag + '.pkl'))
     spec_model.eval()
     
     loss_fn = nn.BCEWithLogitsLoss(reduction='mean')
@@ -213,20 +153,15 @@ if __name__ == '__main__':
         val_auc_best = 0
         best_epoch = 0 
         for epoch in range(2000):
-            logreg.train()
-            opt.zero_grad()
-            for tem in train_data_loader:
-                logits, y = refine_logreg(tem, args.device, logreg, n_task=task_num)
-                loss = loss_fn(logits, y)
-                #print(f"Loss in epoch {epoch} is {loss.item()}")
-                loss.backward()
-            opt.step()
+            train_classification_probe_epoch(
+                train_data_loader, spec_model, logreg, opt, loss_fn, args.device, n_task=task_num
+            )
             
             with torch.no_grad():
                 val_logits = torch.Tensor().to(args.device)
                 val_y = torch.Tensor().to(args.device)
                 for tem in val_data_loader:
-                    logits, y = refine_logreg(tem, args.device, logreg, task_num)
+                    logits, y = classification_probe_batch(tem, spec_model, logreg, args.device, task_num)
                     val_logits = torch.cat((val_logits, logits),0)
                     val_y = torch.cat((val_y, y),0)
                 val_auc = calculate_auc(val_y.cpu().numpy(), val_logits.cpu().numpy(), task_num)
@@ -236,7 +171,7 @@ if __name__ == '__main__':
                     test_logits = torch.Tensor().to(args.device)
                     test_y = torch.Tensor().to(args.device)
                     for tem in test_data_loader:
-                        logits, y = refine_logreg(tem, args.device, logreg, task_num)
+                        logits, y = classification_probe_batch(tem, spec_model, logreg, args.device, task_num)
                         test_logits = torch.cat((test_logits, logits),0)
                         test_y = torch.cat((test_y, y),0)
                     test_auc = calculate_auc(test_y.cpu().numpy(), test_logits.cpu().numpy(), task_num)

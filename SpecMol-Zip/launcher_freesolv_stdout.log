@@ -1,0 +1,39 @@
+[2026-05-03 00:27:42] FreeSolv launcher started. 6 cells to run.
+[2026-05-03 00:27:42] Python: D:\SpecMol-Zip\.venv\Scripts\python.exe
+[2026-05-03 00:27:42] Workdir: D:\SpecMol-Zip\SpecMol-Zip
+[2026-05-03 00:27:42] Timeout per cell: 5400s
+[2026-05-03 00:27:42] 
+--- Cell 1/6: baseline_seed_9 ---
+[2026-05-03 00:27:42] Command: D:\SpecMol-Zip\.venv\Scripts\python.exe run_freesolv_baseline.py --seed 9 --gpu 0
+[2026-05-03 00:37:19]   DONE: baseline_seed_9 in 577s
+[2026-05-03 00:37:19] 
+--- Cell 2/6: baseline_seed_19 ---
+[2026-05-03 00:37:19] Command: D:\SpecMol-Zip\.venv\Scripts\python.exe run_freesolv_baseline.py --seed 19 --gpu 0
+[2026-05-03 00:46:21]   DONE: baseline_seed_19 in 541s
+[2026-05-03 00:46:21] 
+--- Cell 3/6: baseline_seed_29 ---
+[2026-05-03 00:46:21] Command: D:\SpecMol-Zip\.venv\Scripts\python.exe run_freesolv_baseline.py --seed 29 --gpu 0
+[2026-05-03 06:59:45]   DONE: baseline_seed_29 in 22404s
+[2026-05-03 06:59:45] 
+--- Cell 4/6: v2t5_seed_9 ---
+[2026-05-03 06:59:45] Command: D:\SpecMol-Zip\.venv\Scripts\python.exe run_freesolv_v2t5.py --seed 9 --gpu 0
+[2026-05-03 11:14:56]   DONE: v2t5_seed_9 in 15311s
+[2026-05-03 11:14:56] 
+--- Cell 5/6: v2t5_seed_19 ---
+[2026-05-03 11:14:56] Command: D:\SpecMol-Zip\.venv\Scripts\python.exe run_freesolv_v2t5.py --seed 19 --gpu 0
+[2026-05-03 12:36:52]   DONE: v2t5_seed_19 in 4916s
+[2026-05-03 12:36:52] 
+--- Cell 6/6: v2t5_seed_29 ---
+[2026-05-03 12:36:52] Command: D:\SpecMol-Zip\.venv\Scripts\python.exe run_freesolv_v2t5.py --seed 29 --gpu 0
+[2026-05-03 12:57:31]   DONE: v2t5_seed_29 in 1239s
+[2026-05-03 12:57:31] 
+============================================================
+[2026-05-03 12:57:31] LAUNCHER COMPLETE
+[2026-05-03 12:57:31] Status: {
+  "baseline_seed_9": "done",
+  "baseline_seed_19": "done",
+  "baseline_seed_29": "done",
+  "v2t5_seed_9": "done",
+  "v2t5_seed_19": "done",
+  "v2t5_seed_29": "done"
+}

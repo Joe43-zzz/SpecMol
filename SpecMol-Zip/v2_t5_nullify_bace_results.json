@@ -1,0 +1,41 @@
+{
+  "experiment": "V2-T5-nullify ablation on BACE (Uni-Mol fold split)",
+  "model": "LH_Direct_V2 (nullify_pair=True: edge_weight forced to 1)",
+  "data_root": "down_task_v2",
+  "results_per_seed": {
+    "seed_9": {
+      "pretrain_best_epoch": 992,
+      "pretrain_final_loss": 18.6664,
+      "early_stopped": false,
+      "bias_init": 5.0,
+      "bias_final": 5.0,
+      "nullify": true,
+      "loss_history_sample": [
+        18.670132,
+        18.669101,
+        18.668571,
+        18.668309,
+        18.668225,
+        18.66809,
+        18.66787,
+        18.667452,
+        18.66694
+      ],
+      "eval_splits": {
+        "split_9": {
+          "test_auc": 0.8739,
+          "best_eval_epoch": 1242
+        },
+        "split_19": {
+          "test_auc": 0.8874,
+          "best_eval_epoch": 1366
+        },
+        "split_29": {
+          "test_auc": 0.8754,
+          "best_eval_epoch": 1526
+        }
+      },
+      "mean_test_auc": 0.8789
+    }
+  }
+}

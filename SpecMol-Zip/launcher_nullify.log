@@ -1,0 +1,21 @@
+LAUNCHER started at 2026-05-02 07:38:40
+Python: D:\SpecMol-Zip\.venv\Scripts\python.exe
+Seeds to run: [19, 29]
+
+============================================================
+LAUNCHER: Starting subprocess for seed 19
+============================================================
+
+============================================================
+PRETRAIN seed=19 [NULLIFY]
+============================================================
+Processing data for task bace, dataset all...
+PairToEdgeWeight bias init: 5.0000, nullify=True
+  Epoch 0: loss=18.669521 (new best), bias=5.0000
+  Epoch 1: loss=18.668709 (new best), bias=5.0000
+  Epoch 2: loss=18.668490 (new best), bias=5.0000
+  Epoch 3: loss=18.668348 (new best), bias=5.0000
+  Epoch 4: loss=18.668299 (new best), bias=5.0000
+  Epoch 50: loss=18.668045 (new best), bias=5.0000
+  Epoch 400: loss=18.666973 (new best), bias=5.0000
+  Epoch 550: loss=18.666823 (new best), bias=5.0000

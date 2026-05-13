@@ -71,7 +71,10 @@ class TestbedDataset(InMemoryDataset):
         target_path = self.processed_paths[idx]
         if not os.path.exists(target_path):
             target_path = self._old_style_paths()[idx]
-        self.data, self.slices = torch.load(target_path)
+        try:
+            self.data, self.slices = torch.load(target_path, weights_only=False)
+        except TypeError:
+            self.data, self.slices = torch.load(target_path)
 
     @property
     def processed_dir(self):

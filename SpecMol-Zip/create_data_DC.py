@@ -62,10 +62,12 @@ def get_edge_features(smiles):
         bond_feature = np.array(bond_feature+
                                one_of_k_encoding_unk(bond.GetStereo(),[0,1,2,3,4]))
 
-        bond_index = [bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()]
-        edge_index.append(bond_index)
-        
-        edge_features.append(bond_feature / sum(bond_feature))
+        begin, end = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
+        norm_feat = bond_feature / sum(bond_feature)
+        edge_index.append([begin, end])
+        edge_index.append([end, begin])
+        edge_features.append(norm_feat)
+        edge_features.append(norm_feat)
 
     return edge_features, edge_index
 
