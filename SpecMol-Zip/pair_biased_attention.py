@@ -11,6 +11,7 @@ Bypasses the scalar edge_weight bottleneck of Laplacian-based propagation —
 multi-channel pair info reaches node aggregation directly via attention bias.
 """
 
+import math
 import os
 import torch
 import torch.nn as nn
@@ -35,7 +36,7 @@ class PairBiasedSparseAttention(nn.Module):
     """
 
     def __init__(self, node_dim, pair_dim=64, num_heads=4, head_dim=32,
-                 dropout=0.0, init_std=0.02):
+                 dropout=0.0, init_std=0.02, K_steps=10, use_layernorm=True):
         super().__init__()
         self.node_dim = node_dim
         self.pair_dim = pair_dim
@@ -43,6 +44,20 @@ class PairBiasedSparseAttention(nn.Module):
         self.d = head_dim
         self.attn_dim = num_heads * head_dim
         self.dropout_p = dropout
+        self.use_layernorm = use_layernorm
+
+        # E1 probe (2026-05-14) confirmed bias_proj output dominates qk by 394×
+        # at init (bias≈1.10, qk≈0.003) — softmax saturated, training NaN'd in
+        # one of two seeds. Root cause: pair_repr from Uni-Mol has per-edge
+        # norm ~29, default Kaiming bias_proj amplifies to mean 1.1 per head.
+        # Fix: Pre-LayerNorm on x AND pair_repr brings inputs to ~unit variance,
+        # making qk and bias comparable in magnitude.
+        if use_layernorm:
+            self.x_norm = nn.LayerNorm(node_dim)
+            self.pair_norm = nn.LayerNorm(pair_dim)
+        else:
+            self.x_norm = nn.Identity()
+            self.pair_norm = nn.Identity()
 
         self.q = nn.Linear(node_dim, self.attn_dim)
         self.k = nn.Linear(node_dim, self.attn_dim)
@@ -50,18 +65,23 @@ class PairBiasedSparseAttention(nn.Module):
         # Project attention output back to node_dim so the residual add to
         # Tx_k preserves shape.
         self.out_proj = nn.Linear(self.attn_dim, node_dim)
-        # bias=False so unused (diagonal / cross-molecule) pair slots contribute
-        # exactly zero. (Audit issue #2.)
-        self.bias_proj = nn.Linear(pair_dim, num_heads, bias=False)
+        # bias=True now (E1 fix): with LayerNorm, bias_proj weight uses small
+        # init so its output is ~comparable to qk (~0.05 each). Learnable bias
+        # gives per-head baseline.
+        self.bias_proj = nn.Linear(pair_dim, num_heads, bias=True)
         self.delta_proj = nn.Linear(num_heads, pair_dim)
 
-        # Small-init on out_proj and delta_proj. NOT zero — zeroing both creates
-        # a mutual dead-init lock where V.grad and out_proj.weight.grad are
-        # permanently stuck at 0 (chain: out_proj=0 ⇒ ∂L/∂V=0; delta_proj=0 ⇒
-        # ∂L/∂{Q,K,bias_proj}=0). Small std bounds epoch-0 contribution to ε≈1e-2.
-        nn.init.normal_(self.out_proj.weight, std=init_std)
+        # Init strategy:
+        # - bias_proj: small std (0.02) so bias output ~ 0.02·sqrt(64) = 0.16
+        #   matches qk magnitude after LayerNorm (~0.1-0.5 typical).
+        # - out_proj: scaled by 1/sqrt(2K) since attn_acc accumulates K times.
+        # - delta_proj: same scaling — pair updates accumulate K times.
+        scaled_std = init_std / math.sqrt(max(2 * K_steps, 1))  # K=10 → 0.0045
+        nn.init.normal_(self.bias_proj.weight, std=init_std)
+        nn.init.zeros_(self.bias_proj.bias)
+        nn.init.normal_(self.out_proj.weight, std=scaled_std)
         nn.init.zeros_(self.out_proj.bias)
-        nn.init.normal_(self.delta_proj.weight, std=init_std)
+        nn.init.normal_(self.delta_proj.weight, std=scaled_std)
         nn.init.zeros_(self.delta_proj.bias)
 
     def forward(self, x, pair_repr_edge, pair_edge_index):
@@ -91,13 +111,18 @@ class PairBiasedSparseAttention(nn.Module):
             assert src.max().item() < N and dst.max().item() < N, \
                 f"pair_edge_index out of range: max={max(src.max(), dst.max())}, N={N}"
 
-        Q = self.q(x).view(N, self.H, self.d)
-        K = self.k(x).view(N, self.H, self.d)
-        V = self.v(x).view(N, self.H, self.d)
+        # Pre-LayerNorm on x and pair_repr (E1 fix). Crucial for matching
+        # qk and bias magnitudes — without these, bias dominated qk by 394×.
+        x_n = self.x_norm(x)
+        pair_n = self.pair_norm(pair_repr_edge)
+
+        Q = self.q(x_n).view(N, self.H, self.d)
+        K = self.k(x_n).view(N, self.H, self.d)
+        V = self.v(x_n).view(N, self.H, self.d)
 
         # Sparse logits at pair edges: [E, H]
         qk = (Q[src] * K[dst]).sum(-1) / (self.d ** 0.5)
-        bias = self.bias_proj(pair_repr_edge)            # [E, H]
+        bias = self.bias_proj(pair_n)                    # [E, H]
         logits = qk + bias                                # [E, H]
 
         # fp32 softmax for autocast safety, grouped by source node so each

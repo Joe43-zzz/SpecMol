@@ -84,6 +84,7 @@ class ChebnetII_prop_V2(MessagePassing):
                 node_dim=node_dim, pair_dim=pair_dim,
                 num_heads=t7_num_heads, head_dim=t7_head_dim,
                 dropout=t7_dropout, init_std=t7_init_std,
+                K_steps=K, use_layernorm=True,
             )
             self.t7_enabled = True
             self.t6_enabled = False
