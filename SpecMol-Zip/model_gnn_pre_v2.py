@@ -24,7 +24,8 @@ class ChebNetII_V2(nn.Module):
     def __init__(self, num_features, hidden=512, K=10, dprate=0.50, dropout=0.50,
                  is_bns=False, act_fn='relu', pair_dim=None, proj_dim=32,
                  t7=False, t7_num_heads=4, t7_head_dim=32,
-                 t7_dropout=0.0, t7_init_std=0.02):
+                 t7_dropout=0.0, t7_init_std=0.02,
+                 t7_disable_pair_update=False):
         super(ChebNetII_V2, self).__init__()
         self.lin1 = Linear(num_features, hidden)
         # T6: pass node_dim+pair_dim (without t7) → NodeToPairUpdate in prop layer
@@ -35,6 +36,7 @@ class ChebNetII_V2(nn.Module):
             t7=t7,
             t7_num_heads=t7_num_heads, t7_head_dim=t7_head_dim,
             t7_dropout=t7_dropout, t7_init_std=t7_init_std,
+            t7_disable_pair_update=t7_disable_pair_update,
         )
         assert act_fn in ['relu', 'prelu']
         self.act_fn = nn.PReLU() if act_fn == 'prelu' else nn.ReLU()
@@ -103,7 +105,8 @@ class LH_Direct_V2(nn.Module):
                  t6=False, t6_safe=False, t6_safe_frozen_zero=False,
                  proj_dim=32, t6_safe_delta_init_std=1e-3, bias_init=5.0,
                  t7=False, t7_num_heads=4, t7_head_dim=32,
-                 t7_dropout=0.0, t7_init_std=0.02):
+                 t7_dropout=0.0, t7_init_std=0.02,
+                 t7_disable_pair_update=False):
         super(LH_Direct_V2, self).__init__()
         # Mutual exclusion: at most one of t6 / t6_safe / t7 may be enabled.
         # Reasoning: each modifies the dynamic pair_repr update path; combining
@@ -133,6 +136,7 @@ class LH_Direct_V2(nn.Module):
             t7_head_dim=t7_head_dim,
             t7_dropout=t7_dropout,
             t7_init_std=t7_init_std,
+            t7_disable_pair_update=t7_disable_pair_update,
         )
         self.pair_to_edge_weight = PairToEdgeWeight(
             pair_dim=pair_dim, hidden_dim=pair_hidden_dim, nullify=nullify_pair,

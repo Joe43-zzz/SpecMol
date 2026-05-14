@@ -57,7 +57,8 @@ def gamma_l(slides, beta_a_l, beta_b_l):
 class ChebnetII_prop_V2(MessagePassing):
     def __init__(self, K, node_dim=None, pair_dim=None, proj_dim=32,
                  t7=False, t7_num_heads=4, t7_head_dim=32,
-                 t7_dropout=0.0, t7_init_std=0.02, **kwargs):
+                 t7_dropout=0.0, t7_init_std=0.02,
+                 t7_disable_pair_update=False, **kwargs):
         super(ChebnetII_prop_V2, self).__init__(aggr='add', **kwargs)
 
         self.K = K
@@ -92,6 +93,12 @@ class ChebnetII_prop_V2(MessagePassing):
             # sigmoid(-5) ≈ 0.0067 ≈ 0 at init → epoch 0 ≡ T5 (no node injection).
             # Optimizer can grow gate if attention genuinely helps; provably ≥ T5.
             self.attn_gate = Parameter(torch.tensor(-5.0), requires_grad=True)
+            # T7-static-pair flag: if set, pair_clone += pair_delta is SKIPPED in
+            # forward, so pair_repr stays at Uni-Mol values through K-loop.
+            # Combined with attn_gate≈0, this ablates ALL T7 dynamic behavior:
+            # the model degenerates to "T5 + dead attention modules". If this
+            # variant matches T5 AUC, then pair_repr update is the toxic component.
+            self.t7_disable_pair_update = t7_disable_pair_update
             self.t7_enabled = True
             self.t6_enabled = False
         elif node_dim is not None and pair_dim is not None:
@@ -252,9 +259,11 @@ class ChebnetII_prop_V2(MessagePassing):
                 Tx_1, pair_repr_edge, pair_edge_index, step=1,
             )
         elif t7:
-            out_attn, pair_repr_edge = self._update_with_t7(
+            out_attn, pair_after = self._update_with_t7(
                 Tx_1, pair_repr_edge, pair_edge_index, step=1,
             )
+            if not self.t7_disable_pair_update:
+                pair_repr_edge = pair_after
             attn_acc = attn_acc + coe[1] * out_attn
 
         out = coe[0] / 2 * Tx_0 + coe[1] * Tx_1
@@ -283,9 +292,11 @@ class ChebnetII_prop_V2(MessagePassing):
                     Tx_2, pair_repr_edge, pair_edge_index, step=i,
                 )
             elif t7:
-                out_attn, pair_repr_edge = self._update_with_t7(
+                out_attn, pair_after = self._update_with_t7(
                     Tx_2, pair_repr_edge, pair_edge_index, step=i,
                 )
+                if not self.t7_disable_pair_update:
+                    pair_repr_edge = pair_after
                 attn_acc = attn_acc + coe[i] * out_attn
 
             Tx_0, Tx_1 = Tx_1, Tx_2

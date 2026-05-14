@@ -36,7 +36,8 @@ from utils_fp_downstream import TestbedDataset
 def run_one_seed(pretrain_seed, eval_splits, device, path="down_task_v2",
                  epochs=1000, eval_epochs=500, patience=100,
                  results_path=None, all_results=None,
-                 min_eval_epoch=100, eval_improve_tol=1e-4):
+                 min_eval_epoch=100, eval_improve_tol=1e-4,
+                 t7_disable_pair_update=False):
     set_seed(pretrain_seed)
 
     batch_size = 512
@@ -56,6 +57,7 @@ def run_one_seed(pretrain_seed, eval_splits, device, path="down_task_v2",
         in_dim=93, hid_dim=hid_dim, K=K, dprate=0.5, dropout=0.0,
         is_bns=False, act_fn="relu", type=fp_type,
         pair_dim=64, t7=True,
+        t7_disable_pair_update=t7_disable_pair_update,
     ).to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-7)
 
@@ -227,6 +229,8 @@ if __name__ == "__main__":
                         help="Refuse val-best update before this eval epoch (BACE val=152 noise fix)")
     parser.add_argument("--eval_improve_tol", type=float, default=1e-4,
                         help="Strict-improvement tolerance for val_auc selection")
+    parser.add_argument("--t7_disable_pair_update", action="store_true",
+                        help="Skip pair_clone += pair_delta in K-loop (static pair, T5-equivalent dynamics test)")
     parser.add_argument("--patience", type=int, default=100)
     parser.add_argument("--path", type=str, default="down_task_v2")
     parser.add_argument("--results_path", type=str, default="v2_t7_bace_results.json")
@@ -266,7 +270,8 @@ if __name__ == "__main__":
                                    patience=args.patience,
                                    results_path=results_path, all_results=all_results,
                                    min_eval_epoch=args.min_eval_epoch,
-                                   eval_improve_tol=args.eval_improve_tol)
+                                   eval_improve_tol=args.eval_improve_tol,
+                                   t7_disable_pair_update=args.t7_disable_pair_update)
             all_results["results_per_seed"][f"seed_{seed}"] = result
             with open(results_path, "w") as f:
                 json.dump(all_results, f, indent=2)
