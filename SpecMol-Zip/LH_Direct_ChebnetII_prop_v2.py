@@ -86,6 +86,12 @@ class ChebnetII_prop_V2(MessagePassing):
                 dropout=t7_dropout, init_std=t7_init_std,
                 K_steps=K, use_layernorm=True,
             )
+            # Learnable gate on attn_acc injection. T7 v1 result (BACE mean 0.721 vs
+            # T5 0.837) suggested the node-side attention output is corrupting the
+            # spectral path's representation for downstream linear probe.
+            # sigmoid(-5) ≈ 0.0067 ≈ 0 at init → epoch 0 ≡ T5 (no node injection).
+            # Optimizer can grow gate if attention genuinely helps; provably ≥ T5.
+            self.attn_gate = Parameter(torch.tensor(-5.0), requires_grad=True)
             self.t7_enabled = True
             self.t6_enabled = False
         elif node_dim is not None and pair_dim is not None:
@@ -285,7 +291,9 @@ class ChebnetII_prop_V2(MessagePassing):
             Tx_0, Tx_1 = Tx_1, Tx_2
 
         if t7:
-            out = out + attn_acc
+            # Gated injection: optimizer learns whether to use attention output.
+            # sigmoid(attn_gate) starts at ~0 (T5 equivalent), grows if helpful.
+            out = out + torch.sigmoid(self.attn_gate) * attn_acc
 
         if dynamic:
             return out, pair_repr_edge
