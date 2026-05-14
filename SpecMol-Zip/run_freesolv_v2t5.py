@@ -124,6 +124,11 @@ def run_one_seed(pretrain_seed, device):
     best_test_rmse = float("inf")
     best_eval_epoch = 0
 
+    # Same guards as main_pretrain.py: avoid early-epoch noise locking selection
+    # on tiny FreeSolv val set (64 mol). See feedback_no_motivated_reasoning.md.
+    EVAL_MIN_EPOCH = 100
+    EVAL_IMPROVE_TOL = 1e-4
+
     for ep in range(eval_epochs):
         logreg.train()
         for batch in train_loader:
@@ -137,6 +142,8 @@ def run_one_seed(pretrain_seed, device):
             loss.backward()
             opt.step()
 
+        # Disable Dropout for deterministic val/test inference.
+        logreg.eval()
         with torch.no_grad():
             val_preds = torch.Tensor().to(device)
             val_y = torch.Tensor().to(device)
@@ -149,7 +156,7 @@ def run_one_seed(pretrain_seed, device):
                 val_y = torch.cat((val_y, y), 0)
             val_rmse = torch.sqrt(loss_fn(val_preds, val_y)).item()
 
-            if val_rmse < best_val_rmse:
+            if ep >= EVAL_MIN_EPOCH and val_rmse < best_val_rmse - EVAL_IMPROVE_TOL:
                 best_val_rmse = val_rmse
                 best_eval_epoch = ep
                 test_preds = torch.Tensor().to(device)
