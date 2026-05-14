@@ -18,10 +18,16 @@
 #   SEED    : 9, 19, or 29 (or any int)
 #
 # Env override:
-#   EPOCHS, BATCH_SIZE, HID_DIM, K, PATIENCE, EVAL_SEEDS, ENV_NAME
+#   EPOCHS, BATCH_SIZE, HID_DIM, K, PATIENCE, EVAL_SEEDS, EVAL_EPOCHS, ENV_NAME
 #
 # Resource defaults (above): 4h / 40G / 1 GPU — fits MBZUAI QOS limits.
 # Override via sbatch flags or wrapper script if needed.
+#
+# IMPORTANT (2026-05-14): default EVAL_EPOCHS=500 (reduced from main_pretrain.py
+# implicit default 2000) so that 1 pretrain (≤1000 epoch) + 3 split eval ×500
+# fits within 4h QOS wall clock. T6 jobs with implicit 2000 eval_epochs were
+# observed to timeout. Override with EVAL_EPOCHS=2000 if you need full protocol
+# and have a longer QOS allocation.
 
 set -euo pipefail
 
@@ -35,6 +41,7 @@ HID_DIM="${HID_DIM:-512}"
 K="${K:-10}"
 PATIENCE="${PATIENCE:-100}"
 EVAL_SEEDS="${EVAL_SEEDS:-9,19,29}"
+EVAL_EPOCHS="${EVAL_EPOCHS:-500}"
 ENV_NAME="${ENV_NAME:-specmol}"
 
 LOG_DIR="hpc/logs/${TASK}"
@@ -58,7 +65,7 @@ echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset}"
 
 CMD="python main_pretrain.py --task $TASK --batch_size $BATCH_SIZE --epochs $EPOCHS"
 CMD="$CMD --gpu 0 --hid_dim $HID_DIM --K $K --random_seed $SEED --patience $PATIENCE"
-CMD="$CMD --eval_seeds $EVAL_SEEDS"
+CMD="$CMD --eval_seeds $EVAL_SEEDS --eval_epochs $EVAL_EPOCHS"
 
 case "$VARIANT" in
   v0)
