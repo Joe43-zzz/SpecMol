@@ -34,7 +34,8 @@ from utils_fp_downstream import TestbedDataset
 
 
 def run_one_seed(pretrain_seed, eval_splits, device, path="down_task_v2",
-                 epochs=1000, eval_epochs=2000, patience=100):
+                 epochs=1000, eval_epochs=500, patience=100,
+                 results_path=None, all_results=None):
     set_seed(pretrain_seed)
 
     batch_size = 512
@@ -185,6 +186,13 @@ def run_one_seed(pretrain_seed, eval_splits, device, path="down_task_v2",
             "test_auc": round(best_test_auc, 4),
             "best_eval_epoch": best_eval_epoch,
         }
+        # Incremental save after each split (so a wall-clock timeout still
+        # leaves partial results for inspection).
+        if results_path is not None and all_results is not None:
+            all_results.setdefault("results_per_seed", {})[f"seed_{pretrain_seed}"] = result
+            with open(results_path, "w") as f:
+                json.dump(all_results, f, indent=2)
+            print(f"    [incremental save] {results_path} updated")
 
     split_aucs = [v["test_auc"] for v in result["eval_splits"].values()]
     result["mean_test_auc"] = round(np.mean(split_aucs), 4)
@@ -202,7 +210,7 @@ if __name__ == "__main__":
                         help="Comma-separated pretrain seeds (default: 9 for fast first read)")
     parser.add_argument("--eval_splits", type=str, default="9,19,29")
     parser.add_argument("--epochs", type=int, default=1000)
-    parser.add_argument("--eval_epochs", type=int, default=2000)
+    parser.add_argument("--eval_epochs", type=int, default=500)
     parser.add_argument("--patience", type=int, default=100)
     parser.add_argument("--path", type=str, default="down_task_v2")
     parser.add_argument("--results_path", type=str, default="v2_t7_bace_results.json")
@@ -239,7 +247,8 @@ if __name__ == "__main__":
         else:
             result = run_one_seed(seed, eval_splits, device, path=args.path,
                                    epochs=args.epochs, eval_epochs=args.eval_epochs,
-                                   patience=args.patience)
+                                   patience=args.patience,
+                                   results_path=results_path, all_results=all_results)
             all_results["results_per_seed"][f"seed_{seed}"] = result
             with open(results_path, "w") as f:
                 json.dump(all_results, f, indent=2)
