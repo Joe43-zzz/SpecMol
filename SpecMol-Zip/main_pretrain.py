@@ -23,6 +23,14 @@ lg = RDLogger.logger()
 lg.setLevel(RDLogger.CRITICAL)
 
 
+# Downstream model-selection guards (fix for BACE val/test outlier bug, 2026-05-14).
+# Empirical pattern: tiny val sets (BACE val=152) produce noisy val AUC; early-epoch
+# lucky peaks were locking model selection while LogReg dropout was still active during
+# eval. We require (i) min epoch before selection, (ii) strict-improvement tolerance.
+EVAL_MIN_EPOCH = 100
+EVAL_IMPROVE_TOL = 1e-4
+
+
 def train(spect_net, data_loader, train_optimizer, device, alpha):
     spect_net.train()
     total_loss, total_num, train_bar = 0.0, 0, data_loader
@@ -284,23 +292,28 @@ if __name__ == '__main__':
         set_seed(split_seed)
         logreg = LogReg(hid_dim=args.hid_dim, n_classes=task_num).to(args.device)
         opt = torch.optim.Adam(logreg.parameters(), lr=0.001, weight_decay=0.0) #original:0.01
+        # Deterministic shuffle generator: same split_seed gives same batch order
+        # across runs, eliminating one source of restart-to-restart variance.
+        shuffle_gen = torch.Generator()
+        shuffle_gen.manual_seed(split_seed)
         train_data = TestbedDataset(root=args.path, dataset='train', task=task, type=args.type,seed=split_seed)
-        #print("train_data", train_data)
-        train_data_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-        #print("train_data_loader", train_data_loader)
+        train_data_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, generator=shuffle_gen)
         val_data = TestbedDataset(root=args.path, dataset='valid', task=task, type=args.type, seed=split_seed)
         val_data_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
         test_data = TestbedDataset(root=args.path, dataset='test', task=task, type=args.type,seed=split_seed)
         test_data_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
-        
+
         val_auc_best = 0
-        best_epoch = 0 
+        best_epoch = 0
         test_auc = 0.0
         for epoch in range(args.eval_epochs):
             train_classification_probe_epoch(
                 train_data_loader, spec_model, logreg, opt, loss_fn, args.device, n_task=task_num
             )
-            
+
+            # Disable Dropout during val/test inference (LogReg has p=0.2 dropout that
+            # otherwise stays active under no_grad and amplifies AUC noise on small val sets).
+            logreg.eval()
             with torch.no_grad():
                 val_logits = torch.Tensor().to(args.device)
                 val_y = torch.Tensor().to(args.device)
@@ -309,7 +322,10 @@ if __name__ == '__main__':
                     val_logits = torch.cat((val_logits, logits),0)
                     val_y = torch.cat((val_y, y),0)
                 val_auc = calculate_auc(val_y.cpu().numpy(), val_logits.cpu().numpy(), task_num)
-                if val_auc>val_auc_best:
+                # Two-part guard against early-epoch noise locking model selection:
+                # (1) require minimum epochs before any selection (avoid lucky-spike trap);
+                # (2) require improvement >= EVAL_IMPROVE_TOL (avoid sub-noise updates).
+                if epoch >= EVAL_MIN_EPOCH and val_auc > val_auc_best + EVAL_IMPROVE_TOL:
                     print('Val auc in Epoch {} is {}'.format(epoch, val_auc))
                     val_auc_best = val_auc
                     test_logits = torch.Tensor().to(args.device)
