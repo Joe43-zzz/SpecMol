@@ -35,7 +35,8 @@ from utils_fp_downstream import TestbedDataset
 
 def run_one_seed(pretrain_seed, eval_splits, device, path="down_task_v2",
                  epochs=1000, eval_epochs=500, patience=100,
-                 results_path=None, all_results=None):
+                 results_path=None, all_results=None,
+                 min_eval_epoch=100, eval_improve_tol=1e-4):
     set_seed(pretrain_seed)
 
     batch_size = 512
@@ -166,7 +167,11 @@ def run_one_seed(pretrain_seed, eval_splits, device, path="down_task_v2",
                     val_y = torch.cat((val_y, y[mask]), 0)
                 val_auc = calculate_auc(val_y.cpu().numpy(), val_logits.cpu().numpy(), 1)
 
-                if val_auc > val_auc_best:
+                # Downstream model-selection guards (mirror main_pretrain.py 2026-05-14 fix):
+                # (i) require ep >= min_eval_epoch so tiny BACE val=152 early lucky
+                #     peaks cannot lock model selection; (ii) require strict improvement
+                #     tol so identical val AUCs don't ping-pong test selection.
+                if ep >= min_eval_epoch and val_auc > val_auc_best + eval_improve_tol:
                     val_auc_best = val_auc
                     test_logits = torch.Tensor().to(device)
                     test_y = torch.Tensor().to(device)
@@ -211,6 +216,10 @@ if __name__ == "__main__":
     parser.add_argument("--eval_splits", type=str, default="9,19,29")
     parser.add_argument("--epochs", type=int, default=1000)
     parser.add_argument("--eval_epochs", type=int, default=500)
+    parser.add_argument("--min_eval_epoch", type=int, default=100,
+                        help="Refuse val-best update before this eval epoch (BACE val=152 noise fix)")
+    parser.add_argument("--eval_improve_tol", type=float, default=1e-4,
+                        help="Strict-improvement tolerance for val_auc selection")
     parser.add_argument("--patience", type=int, default=100)
     parser.add_argument("--path", type=str, default="down_task_v2")
     parser.add_argument("--results_path", type=str, default="v2_t7_bace_results.json")
@@ -248,7 +257,9 @@ if __name__ == "__main__":
             result = run_one_seed(seed, eval_splits, device, path=args.path,
                                    epochs=args.epochs, eval_epochs=args.eval_epochs,
                                    patience=args.patience,
-                                   results_path=results_path, all_results=all_results)
+                                   results_path=results_path, all_results=all_results,
+                                   min_eval_epoch=args.min_eval_epoch,
+                                   eval_improve_tol=args.eval_improve_tol)
             all_results["results_per_seed"][f"seed_{seed}"] = result
             with open(results_path, "w") as f:
                 json.dump(all_results, f, indent=2)
