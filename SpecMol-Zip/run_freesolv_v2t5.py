@@ -186,15 +186,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--gpu", type=int, default=0)
+    parser.add_argument("--results-path", type=str, default=RESULTS_PATH)
     args = parser.parse_args()
 
     device = f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu"
     os.makedirs("pkl", exist_ok=True)
+    results_path = args.results_path
+    results_dir = os.path.dirname(results_path)
+    if results_dir:
+        os.makedirs(results_dir, exist_ok=True)
 
     seeds = [args.seed] if args.seed is not None else [9, 19, 29]
 
-    if os.path.exists(RESULTS_PATH):
-        with open(RESULTS_PATH) as f:
+    if os.path.exists(results_path):
+        with open(results_path) as f:
             all_results = json.load(f)
     else:
         all_results = {
@@ -212,7 +217,7 @@ if __name__ == "__main__":
             continue
         result = run_one_seed(seed, device)
         all_results["results_per_seed"][key] = result
-        with open(RESULTS_PATH, "w") as f:
+        with open(results_path, "w") as f:
             json.dump(all_results, f, indent=2)
 
     rmses = [v["best_test_rmse"] for v in all_results["results_per_seed"].values()]
@@ -222,6 +227,6 @@ if __name__ == "__main__":
             "mean_rmse": round(np.mean(rmses), 4),
             "std_rmse": round(np.std(rmses), 4),
         }
-        with open(RESULTS_PATH, "w") as f:
+        with open(results_path, "w") as f:
             json.dump(all_results, f, indent=2)
         print(f"\nV2-T5 SUMMARY: RMSE = {np.mean(rmses):.4f} +/- {np.std(rmses):.4f}")
