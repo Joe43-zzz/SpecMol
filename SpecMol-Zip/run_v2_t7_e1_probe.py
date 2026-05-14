@@ -59,11 +59,14 @@ def probe_attention(model, batch, device):
             return torch.zeros_like(x), pair_repr_edge.new_zeros(0, pair_attn.pair_dim)
         src = pair_edge_index[0]
         dst = pair_edge_index[1]
-        Q = pair_attn.q(x).view(N, pair_attn.H, pair_attn.d)
-        K = pair_attn.k(x).view(N, pair_attn.H, pair_attn.d)
-        V = pair_attn.v(x).view(N, pair_attn.H, pair_attn.d)
+        # Apply LayerNorm if module has it (fixed version)
+        x_n = pair_attn.x_norm(x) if hasattr(pair_attn, 'x_norm') else x
+        pair_n = pair_attn.pair_norm(pair_repr_edge) if hasattr(pair_attn, 'pair_norm') else pair_repr_edge
+        Q = pair_attn.q(x_n).view(N, pair_attn.H, pair_attn.d)
+        K = pair_attn.k(x_n).view(N, pair_attn.H, pair_attn.d)
+        V = pair_attn.v(x_n).view(N, pair_attn.H, pair_attn.d)
         qk = (Q[src] * K[dst]).sum(-1) / (pair_attn.d ** 0.5)
-        bias = pair_attn.bias_proj(pair_repr_edge)
+        bias = pair_attn.bias_proj(pair_n)
         logits = qk + bias
         attn = softmax(logits.float(), src).to(logits.dtype)
         # CAPTURE
@@ -127,18 +130,23 @@ def main():
         sample_batch = next(iter(DataLoader(data[:32], batch_size=32, shuffle=False))).to(device)
         x_test = sample_batch.x
         pair_test = sample_batch.pair_repr_edge
-        Q_test = pair_attn.q(x_test).view(-1, pair_attn.H, pair_attn.d)
-        K_test = pair_attn.k(x_test).view(-1, pair_attn.H, pair_attn.d)
-        bias_test = pair_attn.bias_proj(pair_test)
+        # Apply LayerNorm if available (matches actual forward path)
+        x_n_test = pair_attn.x_norm(x_test) if hasattr(pair_attn, 'x_norm') else x_test
+        pair_n_test = pair_attn.pair_norm(pair_test) if hasattr(pair_attn, 'pair_norm') else pair_test
+        Q_test = pair_attn.q(x_n_test).view(-1, pair_attn.H, pair_attn.d)
+        K_test = pair_attn.k(x_n_test).view(-1, pair_attn.H, pair_attn.d)
+        bias_test = pair_attn.bias_proj(pair_n_test)
         # Use first chem edge or just any pair
         src_test = sample_batch.pair_edge_index[0][:100]
         dst_test = sample_batch.pair_edge_index[1][:100]
         qk_test = (Q_test[src_test] * K_test[dst_test]).sum(-1) / (pair_attn.d ** 0.5)
+        print(f"  ATTENTION INIT MAGNITUDES (with LayerNorm if present):")
         print(f"    qk magnitude (mean abs):    {qk_test.abs().mean().item():.4f}")
         print(f"    bias magnitude (mean abs):  {bias_test[:100].abs().mean().item():.4f}")
-        print(f"    bias / qk ratio:            {bias_test[:100].abs().mean().item() / max(qk_test.abs().mean().item(), 1e-9):.2f}x")
-        print(f"    pair_repr norm:             {pair_test.norm().item():.2f}")
-        print(f"    pair_repr per-edge norm:    {pair_test.norm(dim=-1).mean().item():.4f}")
+        print(f"    bias / qk ratio:            {bias_test[:100].abs().mean().item() / max(qk_test.abs().mean().item(), 1e-9):.2f}x   (target: <10x for healthy attention)")
+        print(f"    pair_repr norm (raw):       {pair_test.norm().item():.2f}")
+        print(f"    pair_repr norm (LN'd):      {pair_n_test.norm().item():.2f}")
+        print(f"    pair_repr per-edge norm:    {pair_n_test.norm(dim=-1).mean().item():.4f}")
 
     # ========== Per-epoch training + probe ==========
     print(f"\n{'Epoch':>5} | {'Loss':>10} | {'attn_max':>10} | {'attn_ent':>10} | {'pr_norm_t0':>12} | {'pr_norm_tK':>12} | {'ratio':>7}")
