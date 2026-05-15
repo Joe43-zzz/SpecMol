@@ -62,12 +62,14 @@ def get_edge_features(smiles):
         bond_feature = np.array(bond_feature+
                                one_of_k_encoding_unk(bond.GetStereo(),[0,1,2,3,4]))
 
-        begin, end = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
-        norm_feat = bond_feature / sum(bond_feature)
-        edge_index.append([begin, end])
-        edge_index.append([end, begin])
-        edge_features.append(norm_feat)
-        edge_features.append(norm_feat)
+        # [B4 AUDIT] Reverted to pre-B4 single-direction edges to test the
+        # directed-adjacency artifact hypothesis. DO NOT MERGE THIS BRANCH;
+        # it is mathematically non-symmetric and only exists to quantify the
+        # ~2.3 pts BACE V0 gap between pre-B4 (0.797) and post-fix (0.774).
+        bond_index = [bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()]
+        edge_index.append(bond_index)
+
+        edge_features.append(bond_feature / sum(bond_feature))
 
     return edge_features, edge_index
 
