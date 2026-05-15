@@ -23,11 +23,16 @@ lg = RDLogger.logger()
 lg.setLevel(RDLogger.CRITICAL)
 
 
-# Downstream model-selection guards (fix for BACE val/test outlier bug, 2026-05-14).
+# Downstream model-selection guards (fix for BACE val/test outlier bug, 2026-05-14;
+# tightened 2026-05-15 after seeing seed-29 outliers slip past at epoch 102-118).
 # Empirical pattern: tiny val sets (BACE val=152) produce noisy val AUC; early-epoch
 # lucky peaks were locking model selection while LogReg dropout was still active during
 # eval. We require (i) min epoch before selection, (ii) strict-improvement tolerance.
-EVAL_MIN_EPOCH = 100
+# Boundary observation (2026-05-15): even MIN=100 leaks — B4-reverted seed 29 and
+# V2-T5 / T6 on certain BACE seeds peak val between epoch 102-123 then plateau.
+# MIN=200 closes that window; observed healthy best_epochs cluster ≥200 across BBBP V0
+# and post-fix BACE V0, so this does not exclude legitimate convergence.
+EVAL_MIN_EPOCH = 200
 EVAL_IMPROVE_TOL = 1e-4
 
 
