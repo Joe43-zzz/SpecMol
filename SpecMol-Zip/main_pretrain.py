@@ -343,6 +343,11 @@ if __name__ == '__main__':
                         help='Init std for T7 out_proj/delta_proj (default 0.02)')
     parser.add_argument('--t6_warmup_epochs', default=0, type=int,
                         help='Linear LR warmup over the first N epochs (T6 stability). 0 disables (default).')
+    parser.add_argument('--bias_init', default=5.0, type=float,
+                        help='PairToEdgeWeight MLP output bias initialization. Default 5.0 gives '
+                             'sigma(5)=0.993 near-identity gate (preserves all historical V2-T5/T6 '
+                             'results). Lower values (e.g. 1.0 -> sigma=0.73, sigma~=0.20) escape '
+                             'the saturation basin so the gate can actually learn. Requires --use_v2.')
     parser.add_argument('--diagnostics', action='store_true',
                         help='Print T6-safe edge-weight, pair-drift, and gradient diagnostics')
     parser.add_argument('--diagnostic_interval', default=0, type=int,
@@ -395,6 +400,7 @@ if __name__ == '__main__':
             t7_head_dim=args.t7_head_dim,
             t7_dropout=args.t7_dropout,
             t7_init_std=args.t7_init_std,
+            bias_init=args.bias_init,
         )
     else:
         spec_model = LH_Direct(
