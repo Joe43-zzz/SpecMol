@@ -1,0 +1,113 @@
+{
+  "bace": {
+    "dataset": "bace",
+    "task": "classification",
+    "split_mode": "unimol_fold_k10_seed42",
+    "seeds": {
+      "9": {
+        "test_metric": 0.8144490644490645,
+        "metric_name": "auc",
+        "n_train": 1209,
+        "n_val": 152,
+        "n_test": 152,
+        "elapsed_sec": 53.6
+      },
+      "19": {
+        "test_metric": 0.8132363132363132,
+        "metric_name": "auc",
+        "n_train": 1209,
+        "n_val": 152,
+        "n_test": 152,
+        "elapsed_sec": 53.9
+      },
+      "29": {
+        "test_metric": 0.8913721413721414,
+        "metric_name": "auc",
+        "n_train": 1209,
+        "n_val": 152,
+        "n_test": 152,
+        "elapsed_sec": 55.3
+      }
+    },
+    "mean": {
+      "auc": 0.8396858396858397
+    },
+    "std": {
+      "auc": 0.04476575731383925
+    }
+  },
+  "bbbp": {
+    "dataset": "bbbp",
+    "task": "classification",
+    "split_mode": "unimol_fold_k10_seed42",
+    "seeds": {
+      "9": {
+        "test_metric": 0.8300865800865801,
+        "metric_name": "auc",
+        "n_train": 1640,
+        "n_val": 194,
+        "n_test": 205,
+        "elapsed_sec": 59.9
+      },
+      "19": {
+        "test_metric": 0.8029029793735676,
+        "metric_name": "auc",
+        "n_train": 1640,
+        "n_val": 194,
+        "n_test": 205,
+        "elapsed_sec": 60.9
+      },
+      "29": {
+        "test_metric": 0.8130888719124013,
+        "metric_name": "auc",
+        "n_train": 1640,
+        "n_val": 194,
+        "n_test": 205,
+        "elapsed_sec": 61.5
+      }
+    },
+    "mean": {
+      "auc": 0.8153594771241831
+    },
+    "std": {
+      "auc": 0.013733308885769343
+    }
+  },
+  "freesolv": {
+    "dataset": "freesolv",
+    "task": "regression",
+    "split_mode": "unimol_fold_k10_seed42",
+    "seeds": {
+      "9": {
+        "test_metric": 0.9607279232822022,
+        "metric_name": "rmse",
+        "n_train": 170,
+        "n_val": 152,
+        "n_test": 320,
+        "elapsed_sec": 14.6
+      },
+      "19": {
+        "test_metric": 0.7906155767739191,
+        "metric_name": "rmse",
+        "n_train": 170,
+        "n_val": 152,
+        "n_test": 320,
+        "elapsed_sec": 14.4
+      },
+      "29": {
+        "test_metric": 0.8847311051815748,
+        "metric_name": "rmse",
+        "n_train": 170,
+        "n_val": 152,
+        "n_test": 320,
+        "elapsed_sec": 14.7
+      }
+    },
+    "mean": {
+      "rmse": 0.878691535079232
+    },
+    "std": {
+      "rmse": 0.08521684055340459
+    }
+  }
+}
