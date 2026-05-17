@@ -72,6 +72,10 @@ DATASETS = {
 }
 
 SEEDS = [9, 19, 29, 39, 49]
+# Deng et al. (Nat. Commun. 2023) 30-split protocol uses seeds 0..29 sequentially.
+# Used when --n_seeds 30 is passed on the CLI (default keeps SEEDS for backward
+# compat with previously generated JSON files).
+SEEDS_DENG30 = list(range(30))
 
 
 def morgan_fp(mol, n_bits=1024, radius=2):
@@ -227,9 +231,11 @@ def fit_eval(X_tr, y_tr, X_te, y_te, task, seed):
         }
 
 
-def run_dataset(name, split_mode="scaffold"):
+def run_dataset(name, split_mode="scaffold", seeds=None):
+    if seeds is None:
+        seeds = SEEDS
     cfg = DATASETS[name]
-    print(f"[{name}] loading {cfg['csv']}  split={split_mode}")
+    print(f"[{name}] loading {cfg['csv']}  split={split_mode}  n_seeds={len(seeds)}")
     smi, y, split = load_dataset(name, cfg)
     print(f"[{name}] n_raw={len(smi)} positive_rate={float(np.mean(y > 0)) if cfg['task']=='classification' else 'reg'}")
 
@@ -262,8 +268,8 @@ def run_dataset(name, split_mode="scaffold"):
     smi_kept = [s for s, k in zip(smi, ok) if k]
     print(f"[{name}] featurized {X.shape} in {time.time()-t0:.1f}s; dropped {int((~ok).sum())} invalid SMILES")
 
-    out = {"dataset": name, "task": cfg["task"], "n": int(X.shape[0]), "split_mode": split_mode, "seeds": {}}
-    for s in SEEDS:
+    out = {"dataset": name, "task": cfg["task"], "n": int(X.shape[0]), "split_mode": split_mode, "n_seeds": len(seeds), "seeds": {}}
+    for s in seeds:
         tr, te = split_indices(smi_kept, X.shape[0], split, s, split_mode=split_mode, unimol_fold_ids=unimol_fold_ids)
         m = fit_eval(X[tr], y[tr], X[te], y[te], cfg["task"], s)
         m["n_train"], m["n_test"] = int(len(tr)), int(len(te))
@@ -271,9 +277,9 @@ def run_dataset(name, split_mode="scaffold"):
         print(f"[{name}] seed={s}  ", "  ".join(f"{k}={v:.4f}" if isinstance(v, float) else f"{k}={v}" for k, v in m.items()))
 
     # Aggregate
-    metric_keys = [k for k in out["seeds"][str(SEEDS[0])] if k not in ("n_train", "n_test")]
-    out["mean"] = {k: float(np.mean([out["seeds"][str(s)][k] for s in SEEDS])) for k in metric_keys}
-    out["std"] = {k: float(np.std([out["seeds"][str(s)][k] for s in SEEDS], ddof=1)) for k in metric_keys}
+    metric_keys = [k for k in out["seeds"][str(seeds[0])] if k not in ("n_train", "n_test")]
+    out["mean"] = {k: float(np.mean([out["seeds"][str(s)][k] for s in seeds])) for k in metric_keys}
+    out["std"] = {k: float(np.std([out["seeds"][str(s)][k] for s in seeds], ddof=1)) for k in metric_keys}
     print(f"[{name}] MEAN  ", "  ".join(f"{k}={out['mean'][k]:.4f}+/-{out['std'][k]:.4f}" for k in metric_keys))
     return out
 
@@ -282,17 +288,28 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--datasets", nargs="+", default=list(DATASETS.keys()))
     p.add_argument("--split", choices=["scaffold", "random", "unimol_fold"], default="scaffold")
+    p.add_argument("--n_seeds", type=int, default=5,
+                   help="Number of RF seeds. 5 (default) uses the existing SEEDS=[9,19,29,39,49] "
+                        "for backward-compat with stored JSON. 30 switches to Deng2023's seeds=range(30). "
+                        "Any other integer uses SEEDS[:n].")
     p.add_argument("--out", default=None)
     args = p.parse_args()
     if args.out is None:
         args.out = str(REPO / f"baselines_ml_results_{args.split}.json")
+
+    if args.n_seeds == 30:
+        seeds = SEEDS_DENG30
+    elif args.n_seeds == 5:
+        seeds = SEEDS
+    else:
+        seeds = SEEDS[:args.n_seeds] if args.n_seeds <= len(SEEDS) else list(range(args.n_seeds))
 
     results = {}
     for name in args.datasets:
         if name not in DATASETS:
             print(f"skip unknown dataset {name}")
             continue
-        results[name] = run_dataset(name, split_mode=args.split)
+        results[name] = run_dataset(name, split_mode=args.split, seeds=seeds)
 
     with open(args.out, "w") as f:
         json.dump(results, f, indent=2)
