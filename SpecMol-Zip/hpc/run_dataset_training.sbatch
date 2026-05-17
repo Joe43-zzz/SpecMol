@@ -89,7 +89,18 @@ case "$VARIANT" in
     ;;
 esac
 
-LOG_FILE="${LOG_DIR}/${VARIANT}_seed${SEED}_${SLURM_JOB_ID:-local}.log"
+# Optional extra CLI args appended verbatim. Used for one-off sweeps without
+# forking this script (e.g. --bias_init 1.0 --dump_gate_stats for the
+# saturation A/B). Empty default is a no-op.
+EXTRA_ARGS="${EXTRA_ARGS:-}"
+if [ -n "$EXTRA_ARGS" ]; then
+  CMD="$CMD $EXTRA_ARGS"
+fi
+
+# Tag suffix prevents log filename collisions when the same variant+seed is
+# re-submitted with different EXTRA_ARGS. Defaults to empty for backward compat.
+TAG_SUFFIX="${TAG_SUFFIX:-}"
+LOG_FILE="${LOG_DIR}/${VARIANT}${TAG_SUFFIX}_seed${SEED}_${SLURM_JOB_ID:-local}.log"
 echo "CMD: $CMD"
 echo "LOG: $LOG_FILE"
 eval "$CMD" 2>&1 | tee "$LOG_FILE"
