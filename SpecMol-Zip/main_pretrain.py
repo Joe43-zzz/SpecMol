@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import time
 import torch
@@ -145,6 +146,152 @@ def print_model_diagnostics(model, epoch):
                 f"edge_weight_finite={last_edge['finite']}"
             )
 
+
+def _tensor_summary(values, n_bins=20):
+    """Mean / std / min / max / quantiles / histogram for a 1-D float tensor.
+
+    Output is JSON-friendly Python primitives only. Quantile keys are the
+    rounded integer percentile (e.g. {"1": ...}) so they remain stable across
+    refactors.
+    """
+    if values.numel() == 0:
+        return {"n": 0}
+    values = values.detach().float().flatten().cpu()
+    finite = torch.isfinite(values)
+    if not bool(finite.all().item()):
+        values = values[finite]
+        if values.numel() == 0:
+            return {"n": 0, "all_non_finite": True}
+    quantile_probs = torch.tensor([0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99])
+    quantiles = torch.quantile(values, quantile_probs).tolist()
+    lo = float(values.min().item())
+    hi = float(values.max().item())
+    if hi <= lo:
+        hist = {"edges": [lo, hi], "counts": [int(values.numel())]}
+    else:
+        counts = torch.histc(values, bins=n_bins, min=lo, max=hi).tolist()
+        edges = torch.linspace(lo, hi, n_bins + 1).tolist()
+        hist = {"edges": edges, "counts": [int(c) for c in counts]}
+    return {
+        "n": int(values.numel()),
+        "mean": float(values.mean().item()),
+        "std": float(values.std(unbiased=True).item()) if values.numel() > 1 else 0.0,
+        "min": lo,
+        "max": hi,
+        "quantiles": {
+            "1": quantiles[0], "5": quantiles[1], "25": quantiles[2],
+            "50": quantiles[3], "75": quantiles[4], "95": quantiles[5],
+            "99": quantiles[6],
+        },
+        "histogram": hist,
+    }
+
+
+def dump_mlp_phi_stats(spec_model, pretrain_data, batch_size, device,
+                        task, random_seed, tag, args):
+    """Hook the PairToEdgeWeight MLP, run one inference pass over the pretrain
+    'all' split, and write distribution statistics to mlp_phi_stats/<tag>.json.
+
+    Two streams are captured:
+      raw_pre_sigmoid:                 the [E,1] output of pair_to_edge_weight.mlp,
+                                       i.e. the per-direction raw scalar BEFORE
+                                       the (raw_ij + raw_ji)/2 symmetrization and
+                                       sigmoid. Directly comparable to the
+                                       learned bias term b (initialized to +5).
+      edge_weight_post_sigmoid_nonloop:
+                                       the [E_chembond] edge_weight tensor that
+                                       the symmetric-Laplacian construction
+                                       actually consumes, with self-loop entries
+                                       (hard-coded to 1.0) stripped out.
+    """
+    out_dir = "mlp_phi_stats"
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, f"{tag}.json")
+
+    pte = spec_model.pair_to_edge_weight
+    raw_buf = []
+    weight_buf = []
+
+    def _mlp_hook(_module, _inp, output):
+        raw_buf.append(output.detach())
+
+    def _gate_hook(_module, _inp, output):
+        weight_buf.append(output.detach())
+
+    h1 = pte.mlp.register_forward_hook(_mlp_hook)
+    h2 = pte.register_forward_hook(_gate_hook)
+
+    try:
+        loader = DataLoader(pretrain_data, batch_size=batch_size, shuffle=False)
+        n_edges_seen = 0
+        max_edges = 200_000
+        spec_model.eval()
+        with torch.no_grad():
+            for batch in loader:
+                _ = spec_model(batch, device)
+                if weight_buf:
+                    n_edges_seen += int(weight_buf[-1].numel())
+                if n_edges_seen >= max_edges:
+                    break
+    finally:
+        h1.remove()
+        h2.remove()
+
+    raw = torch.cat([t.flatten() for t in raw_buf], dim=0) if raw_buf else torch.empty(0)
+    weights_with_loops = (
+        torch.cat([t.flatten() for t in weight_buf], dim=0) if weight_buf else torch.empty(0)
+    )
+    non_loop_mask = weights_with_loops != 1.0
+    weights_nonloop = weights_with_loops[non_loop_mask]
+    self_loop_fraction = (
+        (1.0 - non_loop_mask.float().mean().item()) if weights_with_loops.numel() else 0.0
+    )
+
+    bias_param = pte.mlp[2].bias
+    bias_value = (
+        float(bias_param.detach().item())
+        if bias_param is not None and bias_param.numel() == 1
+        else None
+    )
+
+    variant = "v2_t5"
+    if getattr(args, "t6", False):
+        variant = "t6"
+    elif getattr(args, "t6_safe", False):
+        variant = "t6_safe"
+    elif getattr(args, "t7", False):
+        variant = "t7"
+
+    payload = {
+        "task": task,
+        "variant": variant,
+        "pretrain_seed": random_seed,
+        "tag": tag,
+        "checkpoint_loaded_from_best_epoch": True,
+        "global_bias_b": bias_value,
+        "self_loop_fraction": self_loop_fraction,
+        "raw_pre_sigmoid": _tensor_summary(raw),
+        "edge_weight_post_sigmoid_nonloop": _tensor_summary(weights_nonloop),
+        "edge_weight_post_sigmoid_with_loops": _tensor_summary(weights_with_loops),
+    }
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+
+    raw_s = payload["raw_pre_sigmoid"]
+    gate_s = payload["edge_weight_post_sigmoid_nonloop"]
+    if raw_s.get("n"):
+        print(
+            f"[gate-stats] bias={bias_value:.4f}  raw(pre-sig): "
+            f"mean={raw_s['mean']:.4f} std={raw_s['std']:.4f} "
+            f"min={raw_s['min']:.4f} max={raw_s['max']:.4f}  "
+            f"gate(post-sig, non-loop): mean={gate_s['mean']:.4f} "
+            f"std={gate_s['std']:.4f} min={gate_s['min']:.4f} "
+            f"max={gate_s['max']:.4f}  -> {out_path}"
+        )
+    else:
+        print(f"[gate-stats] WARNING no raw samples captured; wrote stub to {out_path}")
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='DGC Train')
     parser.add_argument('--datafile', default='in-vitro')
@@ -200,6 +347,11 @@ if __name__ == '__main__':
                         help='Print T6-safe edge-weight, pair-drift, and gradient diagnostics')
     parser.add_argument('--diagnostic_interval', default=0, type=int,
                         help='Optional extra diagnostic logging interval in epochs')
+    parser.add_argument('--dump_gate_stats', action='store_true',
+                        help='After loading the best checkpoint, run one inference pass to dump '
+                             'the V2-T5 / T6 PairToEdgeWeight raw MLP outputs and final edge gates '
+                             'to mlp_phi_stats/<tag>.json (used to evidence that the gate actually '
+                             'moves away from the b=+5 identity bias). Requires --use_v2.')
     # args parse
     args = parser.parse_args()
     print(args)
@@ -297,7 +449,24 @@ if __name__ == '__main__':
     
     spec_model.load_state_dict(load_model_state_dict(ckpt_path))
     spec_model.eval()
-    
+
+    # ------------------------------------------------------------------
+    # Optional: dump V2-T5 / T6 gate statistics for the paper (M5 hook).
+    # ------------------------------------------------------------------
+    if args.dump_gate_stats and args.use_v2 and hasattr(spec_model, "pair_to_edge_weight"):
+        dump_mlp_phi_stats(
+            spec_model=spec_model,
+            pretrain_data=data,
+            batch_size=batch_size,
+            device=args.device,
+            task=task,
+            random_seed=random_seed,
+            tag=tag,
+            args=args,
+        )
+    elif args.dump_gate_stats:
+        print("[gate-stats] skipped: requires --use_v2 with a PairToEdgeWeight module")
+
     if task_type == 'regression':
         loss_fn = nn.MSELoss(reduction='mean')
     else:
