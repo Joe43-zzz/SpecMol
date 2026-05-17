@@ -51,7 +51,7 @@ BEST_AUC_RE = re.compile(
 BEST_RMSE_RE = re.compile(
     r"Best Test RMSE for (?P<task>\w+) in Epoch (?P<epoch>\d+) is (?P<value>[0-9.eE+-]+)"
 )
-LOSS_RE = re.compile(r"In Epoch (\d+)th, the train loss is ([\d.]+)")
+LOSS_RE = re.compile(r"In Epoch (\d+)th, the train loss is (\d+\.\d+)")
 EARLY_STOP_RE = re.compile(r"Early stopping!")
 LOADING_RE = re.compile(r"Loading (\d+)th eppoch")
 
