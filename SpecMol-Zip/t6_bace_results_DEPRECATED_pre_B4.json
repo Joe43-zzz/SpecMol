@@ -1,0 +1,44 @@
+{
+  "_status": "DEPRECATED: pre-B4 data (down_task_v2 archive, see CLAUDE.md memory B4 entry). See bace_all_results.json post-B4 for the canonical numbers.",
+  "_b4_fix": "create_data_DC.py:get_edge_features now adds bidirectional bonds. This file's numbers came from one-way edge_index where ~18% atoms had Laplacian out-degree=0.",
+  "_deprecation_date": "2026-05-13",
+  "_replacement": "hpc/results/bace_all_results.json (built via TASK=bace bash hpc/run_dataset_pipeline.sh, post-B4)",
+  "legacy_payload": {
+    "experiment": "T6 Bidirectional Pair-Node Update on BACE",
+    "model": "LH_Direct_V2 + NodeToPairUpdate (ChebNetII_V2 + dynamic pair + FP MLP)",
+    "data_root": "down_task_v2",
+    "results_per_seed": {
+      "seed_9": {
+        "pretrain_best_epoch": 981,
+        "eval_splits": {
+          "split_9": {"test_auc": 0.8120, "best_eval_epoch": 407},
+          "split_19": {"test_auc": 0.8777, "best_eval_epoch": 76},
+          "split_29": {"test_auc": 0.8841, "best_eval_epoch": 1255}
+        },
+        "mean_test_auc": 0.8579
+      },
+      "seed_19": {
+        "eval_splits": {
+          "split_9": {"test_auc": 0.8423, "best_eval_epoch": 1964},
+          "split_19": {"test_auc": 0.8474, "best_eval_epoch": 621},
+          "split_29": {"test_auc": 0.8416, "best_eval_epoch": 937}
+        },
+        "mean_test_auc": 0.8438
+      },
+      "seed_29": {
+        "eval_splits": {
+          "split_9": {"test_auc": 0.5683, "best_eval_epoch": 72},
+          "split_19": {"test_auc": 0.8850, "best_eval_epoch": 1828},
+          "split_29": {"test_auc": 0.8858, "best_eval_epoch": 469}
+        },
+        "mean_test_auc": 0.7797
+      }
+    },
+    "summary": {
+      "all_test_aucs": [0.8120, 0.8777, 0.8841, 0.8423, 0.8474, 0.8416, 0.5683, 0.8850, 0.8858],
+      "grand_mean": 0.8271,
+      "grand_std": 0.0939,
+      "per_seed_means": [0.8579, 0.8438, 0.7797]
+    }
+  }
+}
