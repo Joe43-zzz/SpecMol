@@ -113,3 +113,47 @@ def train_classification_probe_epoch(loader, model, logreg, optimizer, loss_fn, 
         loss = loss_fn(logits, y)
         loss.backward()
         optimizer.step()
+
+
+def regression_probe_batch(batch, model, logreg, device):
+    """Return predictions/targets for a frozen-encoder regression probe.
+
+    Mirrors classification_probe_batch but without n_task masking (regression
+    targets are dense, no 999 missing-label sentinel).
+    """
+    with torch.no_grad():
+        _, _, spec_x, x_fp, y = model.get_embedding(batch, device)
+    embed = torch.cat([spec_x.detach(), x_fp.detach()], dim=1)
+    preds = logreg(embed)
+    y = y.reshape(-1, 1).float()
+    return preds, y
+
+
+def train_regression_probe_epoch(loader, model, logreg, optimizer, loss_fn, device):
+    """One mini-batch SGD epoch for frozen regression linear eval (MSE)."""
+    logreg.train()
+    model.eval()
+    for batch in loader:
+        optimizer.zero_grad()
+        preds, y = regression_probe_batch(batch, model, logreg, device)
+        loss = loss_fn(preds, y)
+        loss.backward()
+        optimizer.step()
+
+
+def calculate_rmse(y_true, y_pred):
+    """Root mean squared error. Inputs accept numpy arrays or torch tensors."""
+    if torch.is_tensor(y_true):
+        y_true = y_true.cpu().numpy()
+    if torch.is_tensor(y_pred):
+        y_pred = y_pred.cpu().numpy()
+    return float(np.sqrt(np.mean((y_true.reshape(-1) - y_pred.reshape(-1)) ** 2)))
+
+
+def calculate_mae(y_true, y_pred):
+    """Mean absolute error. Inputs accept numpy arrays or torch tensors."""
+    if torch.is_tensor(y_true):
+        y_true = y_true.cpu().numpy()
+    if torch.is_tensor(y_pred):
+        y_pred = y_pred.cpu().numpy()
+    return float(np.mean(np.abs(y_true.reshape(-1) - y_pred.reshape(-1))))

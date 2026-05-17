@@ -9,12 +9,18 @@ from utils_fp_downstream import TestbedDataset
 import torch.nn as nn
 from train_utils import (
     calculate_auc,
+    calculate_mae,
+    calculate_rmse,
     classification_probe_batch,
     load_model_state_dict,
     ours_loss,
+    regression_probe_batch,
     set_seed,
     train_classification_probe_epoch,
+    train_regression_probe_epoch,
 )
+
+REGRESSION_TASKS = ('freesolv', 'esol', 'lipo')
 
 from rdkit import RDLogger
 
@@ -207,8 +213,10 @@ if __name__ == '__main__':
     
     set_seed(random_seed)
     
-    clr_tasks = {'bbbp': 1, 'hiv': 1, 'bace': 1, 'tox21': 12, 'clintox': 2, 'sider': 27, 'MUV': 17, 'toxcast':617, 'PCBA':128, 'ecoli':1}
+    clr_tasks = {'bbbp': 1, 'hiv': 1, 'bace': 1, 'tox21': 12, 'clintox': 2, 'sider': 27, 'MUV': 17, 'toxcast':617, 'PCBA':128, 'ecoli':1,
+                 'freesolv': 1, 'esol': 1, 'lipo': 1}
     task_num = clr_tasks[task]
+    task_type = 'regression' if task in REGRESSION_TASKS else 'classification'
     datafile = 'now'
     save_name_pre = '{}_{}_{}'.format(batch_size, epochs, datafile)
     os.makedirs('results/'+save_name_pre, exist_ok=True)
@@ -290,7 +298,10 @@ if __name__ == '__main__':
     spec_model.load_state_dict(load_model_state_dict(ckpt_path))
     spec_model.eval()
     
-    loss_fn = nn.BCEWithLogitsLoss(reduction='mean')
+    if task_type == 'regression':
+        loss_fn = nn.MSELoss(reduction='mean')
+    else:
+        loss_fn = nn.BCEWithLogitsLoss(reduction='mean')
     
     split_seeds = [int(seed.strip()) for seed in str(args.eval_seeds).split(',') if seed.strip()]
     for split_seed in split_seeds:
@@ -308,40 +319,73 @@ if __name__ == '__main__':
         test_data = TestbedDataset(root=args.path, dataset='test', task=task, type=args.type,seed=split_seed)
         test_data_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
 
-        val_auc_best = 0
-        best_epoch = 0
-        test_auc = 0.0
-        for epoch in range(args.eval_epochs):
-            train_classification_probe_epoch(
-                train_data_loader, spec_model, logreg, opt, loss_fn, args.device, n_task=task_num
-            )
+        if task_type == 'regression':
+            best_val_rmse = float('inf')
+            best_epoch = 0
+            test_rmse = float('inf')
+            test_mae = float('inf')
+            for epoch in range(args.eval_epochs):
+                train_regression_probe_epoch(
+                    train_data_loader, spec_model, logreg, opt, loss_fn, args.device
+                )
+                logreg.eval()
+                with torch.no_grad():
+                    val_preds = torch.Tensor().to(args.device)
+                    val_y = torch.Tensor().to(args.device)
+                    for tem in val_data_loader:
+                        preds, y = regression_probe_batch(tem, spec_model, logreg, args.device)
+                        val_preds = torch.cat((val_preds, preds), 0)
+                        val_y = torch.cat((val_y, y), 0)
+                    val_rmse = calculate_rmse(val_y, val_preds)
+                    if epoch >= EVAL_MIN_EPOCH and val_rmse < best_val_rmse - EVAL_IMPROVE_TOL:
+                        print('Val rmse in Epoch {} is {}'.format(epoch, val_rmse))
+                        best_val_rmse = val_rmse
+                        test_preds = torch.Tensor().to(args.device)
+                        test_y = torch.Tensor().to(args.device)
+                        for tem in test_data_loader:
+                            preds, y = regression_probe_batch(tem, spec_model, logreg, args.device)
+                            test_preds = torch.cat((test_preds, preds), 0)
+                            test_y = torch.cat((test_y, y), 0)
+                        test_rmse = calculate_rmse(test_y, test_preds)
+                        test_mae = calculate_mae(test_y, test_preds)
+                        print('Test rmse in Epoch {} is {} (mae {})'.format(epoch, test_rmse, test_mae))
+                        best_epoch = epoch
+            print('Best Test RMSE for {} in Epoch {} is {} (MAE {})'.format(args.task, best_epoch, test_rmse, test_mae))
+        else:
+            val_auc_best = 0
+            best_epoch = 0
+            test_auc = 0.0
+            for epoch in range(args.eval_epochs):
+                train_classification_probe_epoch(
+                    train_data_loader, spec_model, logreg, opt, loss_fn, args.device, n_task=task_num
+                )
 
-            # Disable Dropout during val/test inference (LogReg has p=0.2 dropout that
-            # otherwise stays active under no_grad and amplifies AUC noise on small val sets).
-            logreg.eval()
-            with torch.no_grad():
-                val_logits = torch.Tensor().to(args.device)
-                val_y = torch.Tensor().to(args.device)
-                for tem in val_data_loader:
-                    logits, y = classification_probe_batch(tem, spec_model, logreg, args.device, task_num)
-                    val_logits = torch.cat((val_logits, logits),0)
-                    val_y = torch.cat((val_y, y),0)
-                val_auc = calculate_auc(val_y.cpu().numpy(), val_logits.cpu().numpy(), task_num)
-                # Two-part guard against early-epoch noise locking model selection:
-                # (1) require minimum epochs before any selection (avoid lucky-spike trap);
-                # (2) require improvement >= EVAL_IMPROVE_TOL (avoid sub-noise updates).
-                if epoch >= EVAL_MIN_EPOCH and val_auc > val_auc_best + EVAL_IMPROVE_TOL:
-                    print('Val auc in Epoch {} is {}'.format(epoch, val_auc))
-                    val_auc_best = val_auc
-                    test_logits = torch.Tensor().to(args.device)
-                    test_y = torch.Tensor().to(args.device)
-                    for tem in test_data_loader:
+                # Disable Dropout during val/test inference (LogReg has p=0.2 dropout that
+                # otherwise stays active under no_grad and amplifies AUC noise on small val sets).
+                logreg.eval()
+                with torch.no_grad():
+                    val_logits = torch.Tensor().to(args.device)
+                    val_y = torch.Tensor().to(args.device)
+                    for tem in val_data_loader:
                         logits, y = classification_probe_batch(tem, spec_model, logreg, args.device, task_num)
-                        test_logits = torch.cat((test_logits, logits),0)
-                        test_y = torch.cat((test_y, y),0)
-                    test_auc = calculate_auc(test_y.cpu().numpy(), test_logits.cpu().numpy(), task_num)
-                    print('Test auc in Epoch {} is {}'.format(epoch, test_auc))
-                    best_epoch = epoch
-        print('Best Test Auc for {} in Epoch {} is {}'.format(args.task, best_epoch, test_auc))
+                        val_logits = torch.cat((val_logits, logits),0)
+                        val_y = torch.cat((val_y, y),0)
+                    val_auc = calculate_auc(val_y.cpu().numpy(), val_logits.cpu().numpy(), task_num)
+                    # Two-part guard against early-epoch noise locking model selection:
+                    # (1) require minimum epochs before any selection (avoid lucky-spike trap);
+                    # (2) require improvement >= EVAL_IMPROVE_TOL (avoid sub-noise updates).
+                    if epoch >= EVAL_MIN_EPOCH and val_auc > val_auc_best + EVAL_IMPROVE_TOL:
+                        print('Val auc in Epoch {} is {}'.format(epoch, val_auc))
+                        val_auc_best = val_auc
+                        test_logits = torch.Tensor().to(args.device)
+                        test_y = torch.Tensor().to(args.device)
+                        for tem in test_data_loader:
+                            logits, y = classification_probe_batch(tem, spec_model, logreg, args.device, task_num)
+                            test_logits = torch.cat((test_logits, logits),0)
+                            test_y = torch.cat((test_y, y),0)
+                        test_auc = calculate_auc(test_y.cpu().numpy(), test_logits.cpu().numpy(), task_num)
+                        print('Test auc in Epoch {} is {}'.format(epoch, test_auc))
+                        best_epoch = epoch
+            print('Best Test Auc for {} in Epoch {} is {}'.format(args.task, best_epoch, test_auc))
             
         
