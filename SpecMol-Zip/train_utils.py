@@ -90,27 +90,64 @@ def load_pyg_inmemory_split(root, task, split):
     return _PtDataset(root, os.path.basename(pt_path))
 
 
-def classification_probe_batch(batch, model, logreg, device, n_task):
-    """Return masked logits/labels for a frozen encoder classification probe."""
+def classification_probe_batch(batch, model, logreg, device, n_task, return_shaped=False):
+    """Return logits/labels for a frozen encoder classification probe.
+
+    return_shaped=False (default): legacy API, returns 1-D (logits[mask], y[mask])
+    over valid (non-999) entries. Preserves the existing eval call sites.
+
+    return_shaped=True: returns (logits, y, mask) all shaped [B, n_task]; used
+    by the per-task-weighted training path so it can balance tasks.
+    """
     with torch.no_grad():
         _, _, spec_x, x_fp, y = model.get_embedding(batch, device)
     embed = torch.cat([spec_x.detach(), x_fp.detach()], dim=1)
     logits = logreg(embed)
     y = y.reshape(-1, n_task)
     mask = y != 999
+    if return_shaped:
+        return logits, y, mask
     return logits[mask], y[mask]
 
 
 def train_classification_probe_epoch(loader, model, logreg, optimizer, loss_fn, device, n_task):
-    """One standard mini-batch SGD epoch for frozen classification linear eval."""
+    """One mini-batch SGD epoch for frozen classification linear eval.
+
+    Uses per-task weighting: for each task t, average BCE over its valid entries,
+    then average across tasks. For n_task=1 this is mathematically identical to
+    the legacy `BCEWithLogitsLoss(reduction='mean')` over all valid entries, so
+    BACE/BBBP behavior is unchanged. For multi-label tasks (Tox21 n_task=12 with
+    ~30% missing labels per task; ClinTox n_task=2) it gives each task equal
+    gradient weight regardless of label-validity count, which the legacy uniform
+    mean did not do.
+
+    The `loss_fn` argument is kept in the signature for API compatibility but is
+    ignored — BCEWithLogitsLoss(reduction='none') is built internally so we can
+    apply the per-task aggregation directly. (Removing the arg would force every
+    caller in main_pretrain.py to update.)
+    """
+    bce_none = torch.nn.BCEWithLogitsLoss(reduction='none')
     logreg.train()
     model.eval()
     for batch in loader:
         optimizer.zero_grad()
-        logits, y = classification_probe_batch(batch, model, logreg, device, n_task)
-        if logits.numel() == 0:
+        logits, y, mask = classification_probe_batch(
+            batch, model, logreg, device, n_task, return_shaped=True
+        )
+        if mask.sum() == 0:
             continue
-        loss = loss_fn(logits, y)
+        # Per-element loss on float labels; mask out missing (999) entries.
+        per_elem = bce_none(logits, y.float()) * mask.float()
+        # Per-task sum then divide by per-task valid count; tasks with no valid
+        # samples in this batch contribute 0 (denominator clamped to 1 to avoid
+        # NaN, then the corresponding mask sum gates them out of the mean).
+        per_task_valid_count = mask.sum(dim=0).clamp(min=1).float()
+        per_task_loss = per_elem.sum(dim=0) / per_task_valid_count
+        # Mean across tasks that actually had at least one valid sample.
+        task_has_signal = mask.sum(dim=0) > 0
+        if task_has_signal.sum() == 0:
+            continue
+        loss = per_task_loss[task_has_signal].mean()
         loss.backward()
         optimizer.step()
 
