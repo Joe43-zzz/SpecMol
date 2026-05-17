@@ -41,10 +41,39 @@ def fmt(mean: float, std: Optional[float]) -> str:
     return f"{mean:.3f} $\\pm$ {std:.3f}"
 
 
-def extract_grand(seed_means: list[float]) -> tuple[float, float]:
-    m = statistics.mean(seed_means)
-    s = statistics.stdev(seed_means) if len(seed_means) > 1 else 0.0
+def _stats(per_seed_values: list[float]) -> tuple[float, float]:
+    """Sample mean and sample std (n-1) over per-seed values.
+
+    Unified convention: every reported (mean, std) pair in the paper comes from
+    the same formula, regardless of whether the underlying run had eval restarts.
+    For variants with restarts, callers should pass per-seed *means* (i.e. each
+    seed's restarts already collapsed), not raw restart-level values, so that
+    inter-seed and intra-seed variance are not conflated.
+    """
+    if not per_seed_values:
+        return float("nan"), float("nan")
+    m = statistics.mean(per_seed_values)
+    s = statistics.stdev(per_seed_values) if len(per_seed_values) > 1 else 0.0
     return m, s
+
+
+def _bbbp_per_seed_means(block: dict) -> list[float]:
+    """Extract per-seed means from a BBBP results block.
+
+    The block schema differs across variants:
+        v0_baseline:           {seed{N}: {best_test_auc, best_epoch}}
+        v2_t5_static_pair / t6: {seed{N}: {eval_seed_*: float, mean: float}}
+    For V0 we use best_test_auc directly; for the others we use the recorded
+    mean (which is itself an average over eval restarts).
+    """
+    means: list[float] = []
+    for seed_key in sorted(block.get("results", {})):
+        entry = block["results"][seed_key]
+        if "mean" in entry:
+            means.append(float(entry["mean"]))
+        elif "best_test_auc" in entry:
+            means.append(float(entry["best_test_auc"]))
+    return means
 
 
 def parse_bbbp(data: dict) -> dict[str, tuple[float, float]]:
@@ -57,8 +86,27 @@ def parse_bbbp(data: dict) -> dict[str, tuple[float, float]]:
         block = data.get(key)
         if not block:
             continue
-        out[label] = (block["grand_mean"], block["std"])
+        out[label] = _stats(_bbbp_per_seed_means(block))
     return out
+
+
+def _bace_v0_fp_per_seed_means(block: dict) -> list[float]:
+    """Per-seed means for BACE baseline_unifold_results.json blocks.
+
+    Each seed entry has {eval_splits: {restart_*: {test_auc, ...}}, mean_test_auc}.
+    We use the recorded mean_test_auc when present, else compute it on the fly.
+    """
+    means: list[float] = []
+    per_seed = block.get("results_per_seed", {})
+    for seed_key in sorted(per_seed):
+        entry = per_seed[seed_key]
+        if "mean_test_auc" in entry:
+            means.append(float(entry["mean_test_auc"]))
+        elif "eval_splits" in entry:
+            restart_vals = [float(r["test_auc"]) for r in entry["eval_splits"].values()]
+            if restart_vals:
+                means.append(statistics.mean(restart_vals))
+    return means
 
 
 def parse_bace_v0_fp(data: dict) -> dict[str, tuple[float, float]]:
@@ -67,8 +115,7 @@ def parse_bace_v0_fp(data: dict) -> dict[str, tuple[float, float]]:
         block = data.get(key)
         if not block:
             continue
-        s = block["summary"]
-        out[label] = (s["grand_mean"], s["grand_std"])
+        out[label] = _stats(_bace_v0_fp_per_seed_means(block))
     return out
 
 
@@ -85,22 +132,35 @@ def parse_bace_full(data: dict) -> dict[str, tuple[float, float]]:
             "t6": "T6",
             "fp_only": "FP-only",
         }[variant_key]
-        if "grand_mean" in block:
-            out[label] = (block["grand_mean"], block.get("std", block.get("grand_std", 0.0)))
+        # Prefer per_seed_means when present so the std convention matches.
+        if "per_seed_means" in block:
+            out[label] = _stats([float(x) for x in block["per_seed_means"]])
+        elif "summary" in block and "per_seed_means" in block["summary"]:
+            out[label] = _stats([float(x) for x in block["summary"]["per_seed_means"]])
+        elif "grand_mean" in block:
+            out[label] = (float(block["grand_mean"]),
+                          float(block.get("std", block.get("grand_std", 0.0))))
         elif "summary" in block:
             s = block["summary"]
-            out[label] = (s["grand_mean"], s.get("grand_std", 0.0))
+            out[label] = (float(s["grand_mean"]),
+                          float(s.get("grand_std", 0.0)))
     return out
+
+
+def _freesolv_per_seed(block: dict) -> list[float]:
+    if not block:
+        return []
+    # Each seed entry has best_test_rmse (single run, no restarts).
+    return [float(v["best_test_rmse"]) for v in block.get("results_per_seed", {}).values()
+            if "best_test_rmse" in v]
 
 
 def parse_freesolv(baseline: dict, v2: dict) -> dict[str, tuple[float, float]]:
     out = {}
     if baseline:
-        s = baseline["summary"]
-        out["V0"] = (s["mean_rmse"], s["std_rmse"])
+        out["V0"] = _stats(_freesolv_per_seed(baseline))
     if v2:
-        s = v2["summary"]
-        out["V2-T5"] = (s["mean_rmse"], s["std_rmse"])
+        out["V2-T5"] = _stats(_freesolv_per_seed(v2))
     return out
 
 
@@ -110,7 +170,7 @@ def render_cls_table(bbbp: dict, bace: dict) -> str:
         "% Auto-generated by paper/make_tables.py — do not edit by hand.",
         "\\begin{table}[t]",
         "\\centering",
-        "\\caption{Classification results (test AUC, mean $\\pm$ std over seeds, Uni-Mol fold split).}",
+        "\\caption{Classification results (test AUC, mean $\\pm$ sample std (n{=}3) over per-seed means, Uni-Mol fold split).}",
         "\\label{tab:classification}",
         "\\begin{tabular}{lcc}",
         "\\toprule",
@@ -135,7 +195,7 @@ def render_reg_table(freesolv: dict) -> str:
         "% Auto-generated by paper/make_tables.py — do not edit by hand.",
         "\\begin{table}[t]",
         "\\centering",
-        "\\caption{Regression results on FreeSolv (test RMSE, lower is better).}",
+        "\\caption{Regression results on FreeSolv (test RMSE, lower is better; mean $\\pm$ sample std (n{=}3), scaffold split; the V2-T5 row uses a GBF pair-feature surrogate in place of Uni-Mol, see \\S\\ref{sec:v2t5}).}",
         "\\label{tab:regression}",
         "\\begin{tabular}{lc}",
         "\\toprule",
@@ -161,7 +221,11 @@ def render_main_table(bbbp: dict, bace: dict, freesolv: dict) -> str:
         "\\centering",
         "\\caption{Main results across molecular property prediction benchmarks. "
         "Classification reports test AUC (higher is better); regression reports test RMSE (lower is better). "
-        "All numbers are mean $\\pm$ std across three training seeds with Uni-Mol fold splits.}",
+        "Classification benchmarks use the Uni-Mol scaffold-fold split; FreeSolv uses a standard scaffold split. "
+        "Every cell is mean~$\\pm$~sample standard deviation (n{=}3) across three training seeds; "
+        "for variants with multiple downstream restarts per training seed, the per-seed mean (averaging over restarts) "
+        "is the unit used in the std calculation, so inter-seed and intra-seed noise are not conflated. "
+        "Dashes mark runs pending the post-B4 data rebuild (\\S\\ref{sec:discussion}).}",
         "\\label{tab:main}",
         "\\begin{tabular}{lccc}",
         "\\toprule",

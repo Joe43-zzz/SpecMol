@@ -1,0 +1,162 @@
+[
+  {
+    "label": "BBBP V2-T5 vs V0",
+    "a": "V2-T5",
+    "b": "V0",
+    "metric_direction": "higher_is_better",
+    "per_seed": [
+      {
+        "seed": "seed19",
+        "a": 0.838,
+        "b": 0.8651,
+        "delta": -0.027100000000000013
+      },
+      {
+        "seed": "seed29",
+        "a": 0.887,
+        "b": 0.8455,
+        "delta": 0.04149999999999998
+      },
+      {
+        "seed": "seed9",
+        "a": 0.862,
+        "b": 0.7959,
+        "delta": 0.06609999999999994
+      }
+    ],
+    "mean_delta": 0.026833333333333303,
+    "wins_for_a": 2,
+    "losses_for_a": 1,
+    "ties": 0,
+    "n": 3,
+    "sign_test_two_sided_p": 1.0
+  },
+  {
+    "label": "BBBP T6 vs V0",
+    "a": "T6",
+    "b": "V0",
+    "metric_direction": "higher_is_better",
+    "per_seed": [
+      {
+        "seed": "seed19",
+        "a": 0.8,
+        "b": 0.8651,
+        "delta": -0.06509999999999994
+      },
+      {
+        "seed": "seed29",
+        "a": 0.85,
+        "b": 0.8455,
+        "delta": 0.0044999999999999485
+      },
+      {
+        "seed": "seed9",
+        "a": 0.869,
+        "b": 0.7959,
+        "delta": 0.07309999999999994
+      }
+    ],
+    "mean_delta": 0.004166666666666652,
+    "wins_for_a": 2,
+    "losses_for_a": 1,
+    "ties": 0,
+    "n": 3,
+    "sign_test_two_sided_p": 1.0
+  },
+  {
+    "label": "BBBP V2-T5 vs T6",
+    "a": "V2-T5",
+    "b": "T6",
+    "metric_direction": "higher_is_better",
+    "per_seed": [
+      {
+        "seed": "seed19",
+        "a": 0.838,
+        "b": 0.8,
+        "delta": 0.03799999999999992
+      },
+      {
+        "seed": "seed29",
+        "a": 0.887,
+        "b": 0.85,
+        "delta": 0.03700000000000003
+      },
+      {
+        "seed": "seed9",
+        "a": 0.862,
+        "b": 0.869,
+        "delta": -0.007000000000000006
+      }
+    ],
+    "mean_delta": 0.02266666666666665,
+    "wins_for_a": 2,
+    "losses_for_a": 1,
+    "ties": 0,
+    "n": 3,
+    "sign_test_two_sided_p": 1.0
+  },
+  {
+    "label": "BACE FP-only vs V0",
+    "a": "FP-only",
+    "b": "V0",
+    "metric_direction": "higher_is_better",
+    "per_seed": [
+      {
+        "seed": "seed_19",
+        "a": 0.8537,
+        "b": 0.8212,
+        "delta": 0.03249999999999997
+      },
+      {
+        "seed": "seed_29",
+        "a": 0.8519,
+        "b": 0.868,
+        "delta": -0.016100000000000003
+      },
+      {
+        "seed": "seed_9",
+        "a": 0.8322,
+        "b": 0.702,
+        "delta": 0.1302000000000001
+      }
+    ],
+    "mean_delta": 0.04886666666666669,
+    "wins_for_a": 2,
+    "losses_for_a": 1,
+    "ties": 0,
+    "n": 3,
+    "sign_test_two_sided_p": 1.0
+  },
+  {
+    "label": "FreeSolv V2-T5 vs V0",
+    "a": "V2-T5",
+    "b": "V0",
+    "metric_direction": "lower_is_better",
+    "per_seed": [
+      {
+        "seed": "seed_19",
+        "a": 0.6889,
+        "b": 0.732,
+        "delta": 0.04310000000000003
+      },
+      {
+        "seed": "seed_29",
+        "a": 0.7053,
+        "b": 0.8272,
+        "delta": 0.12190000000000001
+      },
+      {
+        "seed": "seed_9",
+        "a": 0.6297,
+        "b": 0.7221,
+        "delta": 0.09239999999999993
+      }
+    ],
+    "mean_delta": 0.08579999999999999,
+    "wins_for_a": 3,
+    "losses_for_a": 0,
+    "ties": 0,
+    "n": 3,
+    "sign_test_two_sided_p": 0.25
+  }
+]
