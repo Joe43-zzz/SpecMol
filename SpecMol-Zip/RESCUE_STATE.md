@@ -1,6 +1,6 @@
 # SpecMol Rescue State
 
-Last updated: 2026-05-14
+Last updated: 2026-05-18 (overnight session)
 
 This file is the current short-form source of truth for the post-B4 rescue
 work. `PROJECT_STATE.md` is historical and should not be used as the current
@@ -81,3 +81,41 @@ After `hpc/results/bace_all_results.json` exists:
   conservative ablations.
 - If neither beats V0/FP-only, write BACE as a control-heavy or negative case and
   do not keep trying to rescue BACE with new architecture variants.
+
+## 2026-05-18 update: BACE narrative converged on "FP-saturated, not rescuable"
+
+The overnight session closed three loose ends and the BACE chapter of
+the paper is now defensible:
+
+1. **RF on the matched Uni-Mol fold split** (`baselines_ml_results_unimol_fold.json`,
+   30-seed Deng2023 protocol in `baselines_ml_results_deng30_unimol_fold.json`):
+   BACE RF = 0.895 ± 0.003. Strictly beats deep FP-only (0.846), V2-T5 (0.837),
+   and Chemprop (0.840). Confirms Deng et al. 2023 finding on the
+   exact split the paper uses, removing the apples-to-oranges issue.
+
+2. **V2-T5 saturation hypothesis refuted** (`mlp_phi_stats/bace_v2t5_seed{9,19,29}
+   _b5_audit.json`): the bias term drifts only 5.0→4.77, but the MLP weights
+   learn to shift the pre-sigmoid scalar by ~-2.6, so the trained per-bond
+   gate distribution concentrates at sigma≈0.07. V2-T5 IS learning, just not
+   what the original "near-identity preservation" framing claimed; the trained
+   encoder converges to an aggressively sparsified Laplacian. Paper paragraphs
+   corrected (commits eae9a426, 863fc2e0, b06793cd) and a figure embedded.
+
+3. **Chemprop D-MPNN baseline added** (`baselines_chemprop_results_unimol_fold.json`):
+   on BBBP and FreeSolv V2-T5 strictly beats Chemprop (+4.7 AUC on BBBP, -0.20
+   RMSE on FreeSolv). On BACE Chemprop matches the V2/FP-only band but does
+   not reach RF. Strengthens "BACE is FP-saturated" framing without weakening
+   the positive V2 story.
+
+The in-flight HPC bias_init=+1 sweep (jobs 135764-135766) is no longer
+expected to change the bottom-line conclusion — the saturation refutation
+already shows the MLP can shift the gate freely regardless of bias init.
+The sweep result is still useful as a "does the optimization path differ"
+sanity check but should not block paper writing.
+
+Multi-label baseline infrastructure (ClinTox + Tox21) is now wired into
+`baselines_ml.py` and `baselines_chemprop.py`. RF 3-seed smoke:
+ClinTox macro_roc_auc 0.818 ± 0.021, Tox21 0.716 ± 0.006. 30-seed run in flight.
+
+The remaining blockers (B3a/B4a, A4) all touch deep-model pipelines that
+need HPC pair_extract + a multi-task `export_unimol_splits.py` refactor.
