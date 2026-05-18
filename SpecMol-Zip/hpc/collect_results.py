@@ -107,24 +107,36 @@ def collect_variant(log_dir: Path, variant: str, pattern: re.Pattern, eval_seeds
     variant_results = {}
     all_vals = []
 
-    # Match both .log and .out files
-    for log_path in sorted(list(log_dir.glob("*.log")) + list(log_dir.glob("*.out"))):
+    # Order logs by mtime DESC so the freshest log per (variant, seed) wins.
+    # Earlier sorted-by-name ordering caused old historical jobids to shadow
+    # the latest re-submissions when both had usable content.
+    paths = sorted(
+        list(log_dir.glob("*.log")) + list(log_dir.glob("*.out")),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    for log_path in paths:
         match = pattern.search(log_path.name)
         if not match:
             continue
         pretrain_seed = int(match.group(1))
+        seed_key = f"seed_{pretrain_seed}"
+        if seed_key in variant_results:
+            # Already kept the freshest log for this seed; skip older ones.
+            continue
         result = parse_log(log_path, eval_seeds, metric_name=metric_name)
         if result is None:
             print(f"  WARNING: {log_path.name} no parseable content")
             continue
-        # Deduplicate: prefer log with more eval_splits if same seed appears twice
-        existing = variant_results.get(f"seed_{pretrain_seed}")
-        if existing and len(existing.get("eval_splits", {})) >= len(result.get("eval_splits", {})):
+        if not result.get("eval_splits"):
+            # Pretraining log without a downstream eval is not useful — keep
+            # searching the next-older log for this seed instead of locking
+            # the empty-eval one in.
+            print(f"  WARNING: {log_path.name} parsed but has no eval_splits, trying older")
             continue
-        variant_results[f"seed_{pretrain_seed}"] = result
-        if "eval_splits" in result:
-            for v in result["eval_splits"].values():
-                all_vals.append(v["test_metric"])
+        variant_results[seed_key] = result
+        for v in result["eval_splits"].values():
+            all_vals.append(v["test_metric"])
 
     if not variant_results:
         return None
