@@ -1,0 +1,243 @@
+{
+  "task": "bace",
+  "experiment": "BACE V0/V2-T5/T6 Comparison (Uni-Mol fold split)",
+  "eval_seeds": [
+    9,
+    19,
+    29
+  ],
+  "metric_name": "auc",
+  "variants": {
+    "v0": {
+      "results_per_seed": {
+        "seed_29": {
+          "pretrain_best_epoch": 994,
+          "pretrain_final_loss": 18.666,
+          "early_stopped": false,
+          "eval_splits": {
+            "split_9": {
+              "test_metric": 0.7904761904761904,
+              "best_eval_epoch": 287
+            },
+            "split_19": {
+              "test_metric": 0.8015584415584416,
+              "best_eval_epoch": 298
+            },
+            "split_29": {
+              "test_metric": 0.7522077922077921,
+              "best_eval_epoch": 207
+            }
+          },
+          "mean_test_metric": 0.7814,
+          "std_test_metric": 0.0211
+        },
+        "seed_19": {
+          "pretrain_best_epoch": 1001,
+          "pretrain_final_loss": 18.666,
+          "early_stopped": false,
+          "eval_splits": {
+            "split_9": {
+              "test_metric": 0.7986147186147187,
+              "best_eval_epoch": 454
+            },
+            "split_19": {
+              "test_metric": 0.7771428571428571,
+              "best_eval_epoch": 400
+            },
+            "split_29": {
+              "test_metric": 0.7878787878787878,
+              "best_eval_epoch": 451
+            }
+          },
+          "mean_test_metric": 0.7879,
+          "std_test_metric": 0.0088
+        },
+        "seed_9": {
+          "pretrain_best_epoch": 996,
+          "pretrain_final_loss": 18.666,
+          "early_stopped": false,
+          "eval_splits": {
+            "split_9": {
+              "test_metric": 0.7070129870129871,
+              "best_eval_epoch": 480
+            },
+            "split_19": {
+              "test_metric": 0.7158441558441558,
+              "best_eval_epoch": 489
+            },
+            "split_29": {
+              "test_metric": 0.6864069264069264,
+              "best_eval_epoch": 451
+            }
+          },
+          "mean_test_metric": 0.7031,
+          "std_test_metric": 0.0123
+        }
+      },
+      "summary": {
+        "grand_mean": 0.7575,
+        "grand_std": 0.0414,
+        "n_metrics": 9,
+        "per_seed_means": [
+          0.7814,
+          0.7879,
+          0.7031
+        ]
+      }
+    },
+    "v2t5": {
+      "results_per_seed": {
+        "seed_29": {
+          "pretrain_best_epoch": 979,
+          "pretrain_final_loss": 18.666,
+          "early_stopped": false,
+          "eval_splits": {
+            "split_9": {
+              "test_metric": 0.7890909090909092,
+              "best_eval_epoch": 412
+            },
+            "split_19": {
+              "test_metric": 0.7785281385281385,
+              "best_eval_epoch": 337
+            },
+            "split_29": {
+              "test_metric": 0.7504761904761904,
+              "best_eval_epoch": 251
+            }
+          },
+          "mean_test_metric": 0.7727,
+          "std_test_metric": 0.0163
+        },
+        "seed_19": {
+          "pretrain_best_epoch": 991,
+          "pretrain_final_loss": 18.666,
+          "early_stopped": false,
+          "eval_splits": {
+            "split_9": {
+              "test_metric": 0.7740259740259741,
+              "best_eval_epoch": 284
+            },
+            "split_19": {
+              "test_metric": 0.7430303030303032,
+              "best_eval_epoch": 221
+            },
+            "split_29": {
+              "test_metric": 0.7445887445887446,
+              "best_eval_epoch": 203
+            }
+          },
+          "mean_test_metric": 0.7539,
+          "std_test_metric": 0.0143
+        },
+        "seed_9": {
+          "pretrain_best_epoch": 974,
+          "pretrain_final_loss": 18.666,
+          "early_stopped": false,
+          "eval_splits": {
+            "split_9": {
+              "test_metric": 0.7795670995670996,
+              "best_eval_epoch": 318
+            },
+            "split_19": {
+              "test_metric": 0.7222510822510824,
+              "best_eval_epoch": 209
+            },
+            "split_29": {
+              "test_metric": 0.7807792207792208,
+              "best_eval_epoch": 319
+            }
+          },
+          "mean_test_metric": 0.7609,
+          "std_test_metric": 0.0273
+        }
+      },
+      "summary": {
+        "grand_mean": 0.7625,
+        "grand_std": 0.0216,
+        "n_metrics": 9,
+        "per_seed_means": [
+          0.7727,
+          0.7539,
+          0.7609
+        ]
+      }
+    },
+    "t6": {
+      "results_per_seed": {
+        "seed_29": {
+          "pretrain_best_epoch": 997,
+          "pretrain_final_loss": 18.666,
+          "early_stopped": false,
+          "eval_splits": {
+            "split_9": {
+              "test_metric": 0.7080519480519482,
+              "best_eval_epoch": 425
+            },
+            "split_19": {
+              "test_metric": 0.6910822510822512,
+              "best_eval_epoch": 400
+            },
+            "split_29": {
+              "test_metric": 0.609004329004329,
+              "best_eval_epoch": 200
+            }
+          },
+          "mean_test_metric": 0.6694,
+          "std_test_metric": 0.0433
+        },
+        "seed_19": {
+          "pretrain_best_epoch": 987,
+          "pretrain_final_loss": 18.666,
+          "early_stopped": false,
+          "eval_splits": {
+            "split_9": {
+              "test_metric": 0.8067532467532468,
+              "best_eval_epoch": 425
+            },
+            "split_19": {
+              "test_metric": 0.7835497835497836,
+              "best_eval_epoch": 400
+            },
+            "split_29": {
+              "test_metric": 0.7986147186147187,
+              "best_eval_epoch": 451
+            }
+          },
+          "mean_test_metric": 0.7963,
+          "std_test_metric": 0.0096
+        },
+        "seed_9": {
+          "pretrain_best_epoch": 1000,
+          "pretrain_final_loss": 18.666,
+          "early_stopped": false,
+          "eval_splits": {
+            "split_9": {
+              "test_metric": 0.8386147186147187,
+              "best_eval_epoch": 476
+            },
+            "split_19": {
+              "test_metric": 0.8413852813852813,
+              "best_eval_epoch": 498
+            },
+            "split_29": {
+              "test_metric": 0.8348051948051949,
+              "best_eval_epoch": 488
+            }
+          },
+          "mean_test_metric": 0.8383,
+          "std_test_metric": 0.0027
+        }
+      },
+      "summary": {
+        "grand_mean": 0.768,
+        "grand_std": 0.0762,
+        "n_metrics": 9,
+        "per_seed_means": [
+          0.6694,
+          0.7963,
+          0.8383
+        ]
+      }
+    }
+  }
+}

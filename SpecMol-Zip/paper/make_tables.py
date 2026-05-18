@@ -120,18 +120,28 @@ def parse_bace_v0_fp(data: dict) -> dict[str, tuple[float, float]]:
 
 
 def parse_bace_full(data: dict) -> dict[str, tuple[float, float]]:
-    """Parser for post-B4 bace_all_results.json (when it exists)."""
+    """Parser for post-B4 bace_all_results.json produced by hpc/collect_results.py.
+
+    Layout: {"variants": {"v0": {"summary": {...}, "results_per_seed": ...}, "v2t5": ..., "t6": ...}}
+    Each variant's summary has per_seed_means + grand_mean + grand_std.
+    Older layouts (variants at top level, no `variants` wrapper) also accepted
+    for backward compat.
+    """
     out = {}
-    for variant_key in ("v0", "v2_t5", "t6", "fp_only"):
-        block = data.get(variant_key)
+    # Either nested under "variants" (new collector layout) or at top level.
+    src = data.get("variants", data)
+    # Accept both "v2t5" (collector) and "v2_t5" (older legacy).
+    key_aliases = {
+        "v0": "V0",
+        "v2t5": "V2-T5",
+        "v2_t5": "V2-T5",
+        "t6": "T6",
+        "fp_only": "FP-only",
+    }
+    for variant_key, label in key_aliases.items():
+        block = src.get(variant_key)
         if not block:
             continue
-        label = {
-            "v0": "V0",
-            "v2_t5": "V2-T5",
-            "t6": "T6",
-            "fp_only": "FP-only",
-        }[variant_key]
         # Prefer per_seed_means when present so the std convention matches.
         if "per_seed_means" in block:
             out[label] = _stats([float(x) for x in block["per_seed_means"]])
