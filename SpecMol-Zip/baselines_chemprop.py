@@ -64,6 +64,24 @@ DATASETS = {
         "chemprop_metric": "rmse",
         "result_metric": "rmse",
     },
+    "clintox": {
+        "csv": "dataset/clintox/raw/smiles.csv",
+        "smiles_col": 0,
+        "label_col": [1, 2],
+        "task": "classification",
+        "unimol_fold_csv": None,
+        "chemprop_metric": "auc",
+        "result_metric": "roc_auc",
+    },
+    "tox21": {
+        "csv": "dataset/tox21/raw/smiles.csv",
+        "smiles_col": 0,
+        "label_col": list(range(1, 13)),
+        "task": "classification",
+        "unimol_fold_csv": None,
+        "chemprop_metric": "auc",
+        "result_metric": "roc_auc",
+    },
 }
 
 SEEDS = [9, 19, 29]
@@ -105,14 +123,18 @@ def scaffold_kfold(smiles_list, seed=FOLD_SPLIT_SEED, k=KFOLD):
 def load_dataset(name):
     cfg = DATASETS[name]
     csv_path = REPO / cfg["csv"]
+    label_col = cfg["label_col"]
+    multi = isinstance(label_col, list)
     if isinstance(cfg["smiles_col"], int):
         df = pd.read_csv(csv_path, header=None)
         smiles = df[cfg["smiles_col"]].astype(str).tolist()
-        labels = df[cfg["label_col"]].values
+        labels = df[label_col].values  # 2D if multi, 1D if scalar col
     else:
         df = pd.read_csv(csv_path)
         smiles = df[cfg["smiles_col"]].astype(str).tolist()
-        labels = df[cfg["label_col"]].values
+        labels = df[label_col].values
+    if multi and labels.ndim == 1:
+        labels = labels.reshape(-1, 1)  # defensive; pandas usually returns 2D for list cols
 
     # Build fold_ids
     if cfg["unimol_fold_csv"]:
@@ -144,17 +166,31 @@ def load_dataset(name):
 
 
 def write_split_csvs(smiles, labels, fold_ids, cfg, work_dir):
-    """Write train/val/test CSVs in chemprop's expected (smiles, target) format."""
+    """Write train/val/test CSVs in chemprop's expected (smiles, target1, ...) format.
+
+    Returns (label_names, n_train, n_val, n_test). label_names is a list so the
+    chemprop_train --target_columns flag can accept the right number of columns.
+    """
     work_dir = Path(work_dir)
-    label_name = "target"
+    multi = labels.ndim == 2
+    if multi:
+        n_tasks = labels.shape[1]
+        label_names = [f"task{t}" for t in range(n_tasks)]
+    else:
+        label_names = ["target"]
     test_mask = fold_ids == TEST_FOLD
     val_mask = fold_ids == VAL_FOLD
     train_mask = ~(test_mask | val_mask)
     for name, mask in [("train", train_mask), ("val", val_mask), ("test", test_mask)]:
-        df = pd.DataFrame({"smiles": [smiles[i] for i in np.flatnonzero(mask)],
-                            label_name: labels[mask]})
+        cols = {"smiles": [smiles[i] for i in np.flatnonzero(mask)]}
+        if multi:
+            for t, ln in enumerate(label_names):
+                cols[ln] = labels[mask, t]
+        else:
+            cols[label_names[0]] = labels[mask]
+        df = pd.DataFrame(cols)
         df.to_csv(work_dir / f"{name}.csv", index=False)
-    return label_name, int(train_mask.sum()), int(val_mask.sum()), int(test_mask.sum())
+    return label_names, int(train_mask.sum()), int(val_mask.sum()), int(test_mask.sum())
 
 
 SCORE_RE = re.compile(r"Ensemble test (?:auc|rmse|mae)\s*=\s*([0-9.eE+-]+)")
@@ -162,14 +198,18 @@ PER_TASK_SCORE_RE = re.compile(r"Overall test (?:auc|rmse|mae)\s*=\s*([0-9.eE+-]
 
 
 def parse_chemprop_output(stdout, save_dir, metric_key):
-    """Pull the test score out of chemprop's stdout (or test_scores.json)."""
+    """Pull the macro-mean test score out of chemprop's test_scores.csv (or
+    fall back to stdout regex). For multi-task runs chemprop writes one row
+    per task; we mean across rows so the returned scalar is the macro metric.
+    """
     test_scores = Path(save_dir) / "test_scores.csv"
     if test_scores.exists():
         df = pd.read_csv(test_scores)
         cols = [c for c in df.columns if metric_key.lower() in c.lower()]
         if cols:
-            return float(df[cols[0]].iloc[0])
-    # Fallback: regex over stdout
+            vals = df[cols[0]].astype(float).dropna()
+            if len(vals) > 0:
+                return float(vals.mean())
     for rx in (PER_TASK_SCORE_RE, SCORE_RE):
         matches = rx.findall(stdout)
         if matches:
@@ -197,7 +237,7 @@ CHEMPROP_TRAIN = _find_chemprop_train()
 
 def run_chemprop_one(name, seed, work_dir):
     smiles, labels, fold_ids, cfg = load_dataset(name)
-    label_name, n_tr, n_val, n_te = write_split_csvs(smiles, labels, fold_ids, cfg, work_dir)
+    label_names, n_tr, n_val, n_te = write_split_csvs(smiles, labels, fold_ids, cfg, work_dir)
     save_dir = Path(work_dir) / f"out_seed{seed}"
     save_dir.mkdir(parents=True, exist_ok=True)
     cmd = [
@@ -209,7 +249,7 @@ def run_chemprop_one(name, seed, work_dir):
         "--metric", cfg["chemprop_metric"],
         "--save_dir", str(save_dir),
         "--smiles_columns", "smiles",
-        "--target_columns", label_name,
+        "--target_columns", *label_names,
         "--num_folds", "1",
         "--seed", str(seed),
         "--pytorch_seed", str(seed),
