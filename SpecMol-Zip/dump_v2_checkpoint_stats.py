@@ -10,11 +10,17 @@ distribution takes ~4h on HPC. With this script we can audit every
 already-trained V2-T5 / T6 / T7 checkpoint we have for the bias-saturation
 hypothesis in seconds.
 
+Optional `--per-edge-out <path.npz>` additionally saves, for every
+chemical-bond edge in the pretraining pass, a (gate, edge_attr) pair
+so a local analysis script can correlate gate values with bond type /
+stereo / chemistry. Both .npz outputs are typically <5 MB per dataset.
+
 Usage:
   python SpecMol-Zip/dump_v2_checkpoint_stats.py \\
     --checkpoint pkl/best_spec_model_bace_seed9_job134628_*.pkl \\
     --data-path down_task_bace_v2 \\
-    --task bace --tag bace_v2t5_seed9_audit
+    --task bace --tag bace_v2t5_seed9_audit \\
+    --per-edge-out mlp_phi_stats/bace_v2t5_seed9_per_edge.npz
 
 Variant hyperparams are read from --variant (default v2t5). For T6/T7
 checkpoints pass --variant t6 / t7. The model is constructed with the
@@ -114,6 +120,10 @@ def main():
     p.add_argument("--t7-dropout", type=float, default=0.0)
     p.add_argument("--t7-init-std", type=float, default=0.02)
     p.add_argument("--random-seed", type=int, default=0, help="for dump_mlp_phi_stats JSON metadata only")
+    p.add_argument("--per-edge-out", default=None,
+                   help="Optional path to write a .npz with per-edge (gate, edge_attr) pairs for "
+                        "local substructure-attribution analysis. Saved as two arrays: "
+                        "gate [E], edge_attr [E, F]. Self-loops (gate=1.0) are filtered out.")
     args = p.parse_args()
 
     ckpt = Path(args.checkpoint).expanduser().resolve()
@@ -157,6 +167,49 @@ def main():
         args=_StubArgs(args.variant),
     )
     print(f"[diag] wrote mlp_phi_stats/{tag}.json")
+
+    if args.per_edge_out:
+        print(f"[diag] collecting per-edge (gate, edge_attr) pairs for {args.per_edge_out}")
+        import numpy as np
+        gate_buf = []
+        attr_buf = []
+
+        def _gate_hook(_mod, _inp, output):
+            gate_buf.append(output.detach().cpu())
+
+        h = model.pair_to_edge_weight.register_forward_hook(_gate_hook)
+        attr_batches = []
+        try:
+            loader = DataLoader(data, batch_size=args.batch_size, shuffle=False)
+            model.eval()
+            with torch.no_grad():
+                for batch in loader:
+                    gate_buf_len_before = sum(g.numel() for g in gate_buf)
+                    _ = model(batch, args.device)
+                    # data.edge_attr is one row per chem-bond edge (matches edge_index)
+                    if hasattr(batch, "edge_attr") and batch.edge_attr is not None:
+                        attr_batches.append(batch.edge_attr.detach().cpu())
+        finally:
+            h.remove()
+        gate = torch.cat([g.flatten() for g in gate_buf], dim=0) if gate_buf else torch.empty(0)
+        edge_attr = torch.cat(attr_batches, dim=0) if attr_batches else torch.empty(0, 0)
+        # Filter self-loops where pair_to_edge_weight hard-codes 1.0
+        # (chem bonds get learned weights, self-loops do not)
+        if gate.numel() and edge_attr.numel():
+            if gate.numel() == edge_attr.size(0):
+                mask = gate != 1.0
+                gate = gate[mask]
+                edge_attr = edge_attr[mask]
+            else:
+                print(f"[diag] WARNING gate ({gate.numel()}) vs edge_attr "
+                      f"({edge_attr.size(0)}) shape mismatch; saving unfiltered")
+        os.makedirs(os.path.dirname(args.per_edge_out) or ".", exist_ok=True)
+        np.savez_compressed(
+            args.per_edge_out,
+            gate=gate.numpy().astype("float32"),
+            edge_attr=edge_attr.numpy().astype("float32"),
+        )
+        print(f"[diag] wrote {args.per_edge_out}: gate {tuple(gate.shape)}, edge_attr {tuple(edge_attr.shape)}")
 
 
 if __name__ == "__main__":
