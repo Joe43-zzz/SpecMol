@@ -348,6 +348,11 @@ if __name__ == '__main__':
                              'sigma(5)=0.993 near-identity gate (preserves all historical V2-T5/T6 '
                              'results). Lower values (e.g. 1.0 -> sigma=0.73, sigma~=0.20) escape '
                              'the saturation basin so the gate can actually learn. Requires --use_v2.')
+    parser.add_argument('--randomize_pair', action='store_true',
+                        help='Ablation: replace data.pair_repr_edge with same-shape Gaussian noise '
+                             'before pair_to_edge_weight. Tests whether the V2-T5 gating gain is '
+                             'geometry-driven (Uni-Mol pair) or just per-bond MLP capacity '
+                             'exploiting a learnable scalar. Requires --use_v2.')
     parser.add_argument('--diagnostics', action='store_true',
                         help='Print T6-safe edge-weight, pair-drift, and gradient diagnostics')
     parser.add_argument('--diagnostic_interval', default=0, type=int,
@@ -401,6 +406,7 @@ if __name__ == '__main__':
             t7_dropout=args.t7_dropout,
             t7_init_std=args.t7_init_std,
             bias_init=args.bias_init,
+            randomize_pair=args.randomize_pair,
         )
     else:
         spec_model = LH_Direct(

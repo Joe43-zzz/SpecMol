@@ -106,7 +106,7 @@ class LH_Direct_V2(nn.Module):
                  proj_dim=32, t6_safe_delta_init_std=1e-3, bias_init=5.0,
                  t7=False, t7_num_heads=4, t7_head_dim=32,
                  t7_dropout=0.0, t7_init_std=0.02,
-                 t7_disable_pair_update=False):
+                 t7_disable_pair_update=False, randomize_pair=False):
         super(LH_Direct_V2, self).__init__()
         # Mutual exclusion: at most one of t6 / t6_safe / t7 may be enabled.
         # Reasoning: each modifies the dynamic pair_repr update path; combining
@@ -121,6 +121,11 @@ class LH_Direct_V2(nn.Module):
         self.t6_safe = t6_safe
         self.t6_safe_frozen_zero = t6_safe_frozen_zero
         self.t7 = t7
+        # Ablation: replace the Uni-Mol pair_repr with a same-shape Gaussian
+        # before it enters pair_to_edge_weight. Tests whether the gating
+        # improvement is geometry-driven or just MLP capacity exploiting a
+        # learnable per-bond scalar (orthogonal to the 3D pair content).
+        self.randomize_pair = randomize_pair
         self.encoder = ChebNetII_V2(
             num_features=in_dim,
             hidden=hid_dim,
@@ -250,6 +255,10 @@ class LH_Direct_V2(nn.Module):
 
     def _compute_edge_weight(self, data, device):
         pair_repr_edge = data.pair_repr_edge.to(device)
+        if self.randomize_pair:
+            # Same shape, same dtype, standard normal (Uni-Mol pair_repr is
+            # typically O(1) in scale, so randn is a fair geometry-free baseline).
+            pair_repr_edge = torch.randn_like(pair_repr_edge)
         pair_edge_index = data.pair_edge_index.to(device)
         edge_index = data.edge_index.to(device)
         batch = data.batch.to(device)
