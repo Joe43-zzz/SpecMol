@@ -11,3 +11,23 @@ unimol_env/
 unimol_out/
 *.egg-info/
 .DS_Store
+
+# LaTeX build products — regeneratable from main.tex + refs.bib
+paper/main.aux
+paper/main.bbl
+paper/main.blg
+paper/main.out
+paper/main.pdf
+paper/main.log
+paper/main.synctex.gz
+paper/main.fdb_latexmk
+paper/main.fls
+
+# Diagnostic scratch (real ones are under mlp_phi_stats/ which IS tracked)
+mlp_phi_stats/*_TMP.json
+mlp_phi_stats/*_scratch.json
+
+# Temp eval / smoke artifacts created during local sweeps
+_smoke*.json
+_baselines_*_TMP.json
+SpecMol-Zip/main_pretrain.py.MERGED_BACKUP
