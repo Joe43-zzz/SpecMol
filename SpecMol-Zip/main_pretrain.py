@@ -353,6 +353,11 @@ if __name__ == '__main__':
                              'before pair_to_edge_weight. Tests whether the V2-T5 gating gain is '
                              'geometry-driven (Uni-Mol pair) or just per-bond MLP capacity '
                              'exploiting a learnable scalar. Requires --use_v2.')
+    parser.add_argument('--fp_only', action='store_true',
+                        help='Downstream probe ablation: zero out the spec_x (GNN encoder) half of '
+                             'the embed before LogReg, so the linear probe only sees the fingerprint '
+                             'MLP output. Used to test whether a benchmark is fingerprint-saturated. '
+                             'Pretraining is unchanged; only the linear-probe stage differs.')
     parser.add_argument('--diagnostics', action='store_true',
                         help='Print T6-safe edge-weight, pair-drift, and gradient diagnostics')
     parser.add_argument('--diagnostic_interval', default=0, type=int,
@@ -538,7 +543,8 @@ if __name__ == '__main__':
             test_auc = 0.0
             for epoch in range(args.eval_epochs):
                 train_classification_probe_epoch(
-                    train_data_loader, spec_model, logreg, opt, loss_fn, args.device, n_task=task_num
+                    train_data_loader, spec_model, logreg, opt, loss_fn, args.device, n_task=task_num,
+                    fp_only=args.fp_only,
                 )
 
                 # Disable Dropout during val/test inference (LogReg has p=0.2 dropout that
@@ -548,7 +554,7 @@ if __name__ == '__main__':
                     val_logits = torch.Tensor().to(args.device)
                     val_y = torch.Tensor().to(args.device)
                     for tem in val_data_loader:
-                        logits, y = classification_probe_batch(tem, spec_model, logreg, args.device, task_num)
+                        logits, y = classification_probe_batch(tem, spec_model, logreg, args.device, task_num, fp_only=args.fp_only)
                         val_logits = torch.cat((val_logits, logits),0)
                         val_y = torch.cat((val_y, y),0)
                     val_auc = calculate_auc(val_y.cpu().numpy(), val_logits.cpu().numpy(), task_num)
@@ -561,7 +567,7 @@ if __name__ == '__main__':
                         test_logits = torch.Tensor().to(args.device)
                         test_y = torch.Tensor().to(args.device)
                         for tem in test_data_loader:
-                            logits, y = classification_probe_batch(tem, spec_model, logreg, args.device, task_num)
+                            logits, y = classification_probe_batch(tem, spec_model, logreg, args.device, task_num, fp_only=args.fp_only)
                             test_logits = torch.cat((test_logits, logits),0)
                             test_y = torch.cat((test_y, y),0)
                         test_auc = calculate_auc(test_y.cpu().numpy(), test_logits.cpu().numpy(), task_num)

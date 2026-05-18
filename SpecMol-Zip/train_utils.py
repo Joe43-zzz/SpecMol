@@ -90,7 +90,7 @@ def load_pyg_inmemory_split(root, task, split):
     return _PtDataset(root, os.path.basename(pt_path))
 
 
-def classification_probe_batch(batch, model, logreg, device, n_task, return_shaped=False):
+def classification_probe_batch(batch, model, logreg, device, n_task, return_shaped=False, fp_only=False):
     """Return logits/labels for a frozen encoder classification probe.
 
     return_shaped=False (default): legacy API, returns 1-D (logits[mask], y[mask])
@@ -98,10 +98,17 @@ def classification_probe_batch(batch, model, logreg, device, n_task, return_shap
 
     return_shaped=True: returns (logits, y, mask) all shaped [B, n_task]; used
     by the per-task-weighted training path so it can balance tasks.
+
+    fp_only=True: zero out the spec_x (GNN encoder) half of the embed before
+    feeding LogReg. Keeps the LogReg input dim at hid_dim*2 so checkpoint
+    shapes are unchanged; the LogReg's left-half weights see zero input and
+    contribute zero to the logit. Used for the BBBP / BACE fingerprint-only
+    control (audit reviewer attack #1).
     """
     with torch.no_grad():
         _, _, spec_x, x_fp, y = model.get_embedding(batch, device)
-    embed = torch.cat([spec_x.detach(), x_fp.detach()], dim=1)
+    spec_part = torch.zeros_like(spec_x) if fp_only else spec_x.detach()
+    embed = torch.cat([spec_part, x_fp.detach()], dim=1)
     logits = logreg(embed)
     y = y.reshape(-1, n_task)
     mask = y != 999
@@ -110,7 +117,7 @@ def classification_probe_batch(batch, model, logreg, device, n_task, return_shap
     return logits[mask], y[mask]
 
 
-def train_classification_probe_epoch(loader, model, logreg, optimizer, loss_fn, device, n_task):
+def train_classification_probe_epoch(loader, model, logreg, optimizer, loss_fn, device, n_task, fp_only=False):
     """One mini-batch SGD epoch for frozen classification linear eval.
 
     Uses per-task weighting: for each task t, average BCE over its valid entries,
@@ -132,7 +139,7 @@ def train_classification_probe_epoch(loader, model, logreg, optimizer, loss_fn, 
     for batch in loader:
         optimizer.zero_grad()
         logits, y, mask = classification_probe_batch(
-            batch, model, logreg, device, n_task, return_shaped=True
+            batch, model, logreg, device, n_task, return_shaped=True, fp_only=fp_only
         )
         if mask.sum() == 0:
             continue
