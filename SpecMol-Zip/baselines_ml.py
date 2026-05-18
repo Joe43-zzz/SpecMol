@@ -69,6 +69,23 @@ DATASETS = {
         "split_col": None,
         "task": "regression",
     },
+    # Multi-label classification: label_col is a list of column indices/names.
+    # Aggregated metric reported in mean/std is macro_roc_auc; per-task numbers
+    # are kept in the per-seed payload for transparency.
+    "clintox": {
+        "csv": "dataset/clintox/raw/smiles.csv",
+        "smiles_col": 0,  # no header: cols are smiles, FDA_APPROVED, CT_TOX
+        "label_col": [1, 2],
+        "split_col": None,
+        "task": "classification",
+    },
+    "tox21": {
+        "csv": "dataset/tox21/raw/smiles.csv",
+        "smiles_col": 0,  # no header: cols are smiles, then 12 task columns
+        "label_col": list(range(1, 13)),
+        "split_col": None,
+        "task": "classification",
+    },
 }
 
 SEEDS = [9, 19, 29, 39, 49]
@@ -108,16 +125,27 @@ def featurize(smiles_list):
 
 
 def load_dataset(name, cfg):
+    """Load (smiles, y, split) where y is 1-D for single-label and 2-D
+    (n_mol, n_tasks) for multi-label classification (label_col is a list).
+    """
     csv = REPO / cfg["csv"]
+    label_col = cfg["label_col"]
+    multi = isinstance(label_col, list)
     if isinstance(cfg["smiles_col"], int):
         df = pd.read_csv(csv, header=None)
         smi = df.iloc[:, cfg["smiles_col"]].astype(str).tolist()
-        y = df.iloc[:, cfg["label_col"]].astype(float).to_numpy()
+        if multi:
+            y = df.iloc[:, label_col].astype(float).to_numpy()
+        else:
+            y = df.iloc[:, label_col].astype(float).to_numpy()
         split = None
     else:
         df = pd.read_csv(csv)
         smi = df[cfg["smiles_col"]].astype(str).tolist()
-        y = df[cfg["label_col"]].astype(float).to_numpy()
+        if multi:
+            y = df[label_col].astype(float).to_numpy()
+        else:
+            y = df[label_col].astype(float).to_numpy()
         split = (
             df[cfg["split_col"]].astype(str).to_numpy()
             if cfg["split_col"]
@@ -206,6 +234,53 @@ def split_indices(smiles_list, n, split_col, seed, split_mode="scaffold", unimol
 
 
 def fit_eval(X_tr, y_tr, X_te, y_te, task, seed):
+    """Train+evaluate one seed.
+
+    For binary classification (y_tr.ndim == 1) returns {roc_auc, pr_auc, f1}.
+    For multi-label classification (y_tr.ndim == 2) returns per-task lists +
+      macro_roc_auc/macro_pr_auc/macro_f1 aggregates (mean over tasks).
+    For regression returns {rmse, mae}.
+    """
+    if task == "classification" and y_tr.ndim == 2:
+        # Multi-label: train one RF per task, report per-task + macro AUC.
+        n_tasks = y_tr.shape[1]
+        per_task_roc_auc, per_task_pr_auc, per_task_f1 = [], [], []
+        for t in range(n_tasks):
+            y_tr_t = y_tr[:, t].astype(int)
+            y_te_t = y_te[:, t].astype(int)
+            # Tasks with all-zero or all-one in train are undefined; skip and
+            # record NaN so macro aggregation ignores them.
+            if len(np.unique(y_tr_t)) < 2:
+                per_task_roc_auc.append(float("nan"))
+                per_task_pr_auc.append(float("nan"))
+                per_task_f1.append(float("nan"))
+                continue
+            clf = RandomForestClassifier(
+                n_estimators=300, n_jobs=-1, random_state=seed,
+                class_weight="balanced",
+            )
+            clf.fit(X_tr, y_tr_t)
+            proba = clf.predict_proba(X_te)[:, 1]
+            pred = (proba >= 0.5).astype(int)
+            if len(np.unique(y_te_t)) < 2:
+                per_task_roc_auc.append(float("nan"))
+                per_task_pr_auc.append(float("nan"))
+            else:
+                per_task_roc_auc.append(float(roc_auc_score(y_te_t, proba)))
+                per_task_pr_auc.append(float(average_precision_score(y_te_t, proba)))
+            per_task_f1.append(float(f1_score(y_te_t, pred, zero_division=0)))
+        macro = lambda xs: float(np.nanmean(xs)) if any(not np.isnan(v) for v in xs) else float("nan")
+        # Use roc_auc as the single number convention so downstream consumers
+        # (paper/make_tables.py) work without special-casing.
+        return {
+            "roc_auc": macro(per_task_roc_auc),
+            "pr_auc": macro(per_task_pr_auc),
+            "f1": macro(per_task_f1),
+            "per_task_roc_auc": per_task_roc_auc,
+            "per_task_pr_auc": per_task_pr_auc,
+            "per_task_f1": per_task_f1,
+            "n_tasks": n_tasks,
+        }
     if task == "classification":
         clf = RandomForestClassifier(
             n_estimators=300,
@@ -276,10 +351,14 @@ def run_dataset(name, split_mode="scaffold", seeds=None):
         out["seeds"][str(s)] = m
         print(f"[{name}] seed={s}  ", "  ".join(f"{k}={v:.4f}" if isinstance(v, float) else f"{k}={v}" for k, v in m.items()))
 
-    # Aggregate
-    metric_keys = [k for k in out["seeds"][str(seeds[0])] if k not in ("n_train", "n_test")]
-    out["mean"] = {k: float(np.mean([out["seeds"][str(s)][k] for s in seeds])) for k in metric_keys}
-    out["std"] = {k: float(np.std([out["seeds"][str(s)][k] for s in seeds], ddof=1)) for k in metric_keys}
+    # Aggregate — only scalar metrics. Multi-label per_task_* lists and
+    # n_tasks are kept per-seed for transparency but not aggregated here.
+    first = out["seeds"][str(seeds[0])]
+    metric_keys = [k for k, v in first.items()
+                   if k not in ("n_train", "n_test", "n_tasks")
+                   and isinstance(v, (int, float))]
+    out["mean"] = {k: float(np.nanmean([out["seeds"][str(s)][k] for s in seeds])) for k in metric_keys}
+    out["std"] = {k: float(np.nanstd([out["seeds"][str(s)][k] for s in seeds], ddof=1)) for k in metric_keys}
     print(f"[{name}] MEAN  ", "  ".join(f"{k}={out['mean'][k]:.4f}+/-{out['std'][k]:.4f}" for k in metric_keys))
     return out
 
