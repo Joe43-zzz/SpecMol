@@ -265,11 +265,12 @@ def render_main_table(bbbp: dict, bace: dict, freesolv: dict) -> str:
         "\\caption{Main results across molecular property prediction benchmarks. "
         "Classification reports test AUC (higher is better); regression reports test RMSE (lower is better). "
         "Classification benchmarks use the Uni-Mol scaffold-fold split; FreeSolv uses a standard scaffold split. "
-        "Deep-model cells (V0, FP-only, V2-T5, T6) are mean~$\\pm$~sample standard deviation across three training seeds (n{=}3); "
-        "for variants with multiple downstream restarts per training seed, the per-seed mean (averaging over restarts) "
-        "is the unit used in the std calculation, so inter-seed and intra-seed noise are not conflated. "
-        "The RF row uses the 30-seed protocol of \\citet{deng2023systematic} on the matched Uni-Mol fold split (n{=}30). "
-        "Dashes mark runs pending the post-B4 data rebuild (\\S\\ref{sec:discussion}).}",
+        "Deep-model cells (V0, FP-only, V2-T5, T6) are mean~$\\pm$~sample standard deviation across training seeds: "
+        "$n{=}9$ on BBBP (seeds $\\{9, 19, 29, 39, 49, 59, 69, 79, 89\\}$) and $n{=}3$ on BACE/FreeSolv "
+        "(seeds $\\{9, 19, 29\\}$). For variants with multiple downstream restarts per training seed, the "
+        "per-seed mean (averaging over restarts) is the unit used in the std calculation, so inter-seed and "
+        "intra-seed noise are not conflated. The RF row uses the 30-seed protocol of \\citet{deng2023systematic} "
+        "on the matched Uni-Mol fold split (n{=}30). Dashes mark runs not yet collected.}",
         "\\label{tab:main}",
         "\\begin{tabular}{lccc}",
         "\\toprule",

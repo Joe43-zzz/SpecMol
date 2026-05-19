@@ -37,11 +37,34 @@ V2T5_EXT_PER_SEED = {
     89: 0.8407,
 }
 
-# --- V0 / T6 extension placeholders ---------------------------------
-# Filled by reading the new logs once they exist on HPC. Until then we
-# fall back to the existing bbbp_all_results.json (n=3 only).
-V0_EXT_PER_SEED: dict[int, float] = {}
-T6_EXT_PER_SEED: dict[int, float] = {}
+# --- V0 / T6 extension data (committed; pulled from HPC 2026-05-19) -
+# Per-training-seed mean across 3 eval restarts. Logs:
+#   v0_seed{39..89}_135{834..839}.log,
+#   t6_seed{39..89}_135{840..845}.log
+V0_EXT_PER_SEED = {
+    39: (0.8332 + 0.8424 + 0.8379) / 3,  # 0.8378
+    49: (0.8459 + 0.8460 + 0.8444) / 3,  # 0.8454
+    59: (0.7871 + 0.7826 + 0.7815) / 3,  # 0.7837
+    69: (0.8069 + 0.8031 + 0.8024) / 3,  # 0.8041
+    79: (0.8489 + 0.8453 + 0.8489) / 3,  # 0.8477
+    89: (0.8214 + 0.8229 + 0.8314) / 3,  # 0.8252
+}
+T6_EXT_PER_SEED = {
+    39: (0.8261 + 0.8312 + 0.8255) / 3,
+    49: (0.8345 + 0.8343 + 0.8354) / 3,
+    59: (0.8087 + 0.8086 + 0.8101) / 3,
+    69: (0.8422 + 0.8422 + 0.8425) / 3,
+    79: (0.8313 + 0.8322 + 0.8320) / 3,
+    89: (0.8098 + 0.8131 + 0.8076) / 3,
+}
+
+# --- V2-T5 random-pair ablation (3 matched seeds, 3 eval restarts) ---
+# Logs: v2_randp_seed{9,19,29}_135{849,850,851}.log
+RANDP_PER_SEED = {
+    9:  (0.8491 + 0.8464 + 0.8481) / 3,  # 0.8479
+    19: (0.8149 + 0.8135 + 0.8126) / 3,  # 0.8137
+    29: (0.8268 + 0.8321 + 0.8256) / 3,  # 0.8282
+}
 
 
 def load_original_n3():
@@ -92,20 +115,41 @@ def main():
     ]:
         n3_mean = np.mean(orig[label])
         n3_std = np.std(orig[label], ddof=1)
-        n6_mean = np.mean(list(ext_dict.values())) if ext_dict else None
-        n6_std = np.std(list(ext_dict.values()), ddof=1) if ext_dict and len(ext_dict) > 1 else None
+        ext_vals = list(ext_dict.values())
+        n6_str = f"{np.mean(ext_vals):.4f}" if ext_vals else "pending"
+        n6_std_str = f"{np.std(ext_vals, ddof=1):.4f}" if len(ext_vals) > 1 else "pending"
         nc_mean = np.mean(all_seeds)
         nc_std = np.std(all_seeds, ddof=1)
         lines.append(f"| {label} | {n3_mean:.4f} | {n3_std:.4f} | "
-                     f"{n6_mean:.4f if n6_mean is not None else 'pending'} | "
-                     f"{n6_std:.4f if n6_std is not None else 'pending'} | "
+                     f"{n6_str} | {n6_std_str} | "
                      f"{len(all_seeds)} | {nc_mean:.4f} | {nc_std:.4f} |")
 
     lines.append("")
-    if V2T5_EXT_PER_SEED and not V0_EXT_PER_SEED:
-        lines.append(("> Note: V0 and T6 6-seed extensions still pending. The V2-T5 delta vs V0 "
-                      f"shown above compares V2-T5 (n={len(v2t5_all)}) against V0 (n=3); a fair "
-                      "matched-seed comparison requires V0/T6 extensions to land first."))
+    # Random-pair matched-seed comparison (seeds 9,19,29 only)
+    if RANDP_PER_SEED:
+        v2_matched = orig["V2-T5"]  # [seed9, seed19, seed29] means
+        rp_matched = [RANDP_PER_SEED[9], RANDP_PER_SEED[19], RANDP_PER_SEED[29]]
+        deltas = [v - r for v, r in zip(v2_matched, rp_matched)]
+        wins = sum(1 for d in deltas if d > 0)
+        lines.append("## Random-pair ablation (matched seeds 9/19/29)")
+        lines.append("")
+        lines.append(f"- V2-T5 (real Uni-Mol pair): {v2_matched} → mean {np.mean(v2_matched):.4f}")
+        lines.append(f"- V2-T5 (random Gaussian pair): {[f'{x:.4f}' for x in rp_matched]} → mean {np.mean(rp_matched):.4f}")
+        lines.append(f"- per-seed deltas (real − random): {[f'{d:+.4f}' for d in deltas]}")
+        lines.append(f"- mean delta: {np.mean(deltas):+.4f}")
+        lines.append(f"- sign test: {wins}/3 seeds favor real pair (binomial one-sided p≈{0.5 ** wins if wins == 3 else 'n/a'})")
+        lines.append("")
+    # Honest n=9 summary
+    lines.append("## n=9 BBBP grand summary")
+    lines.append("")
+    lines.append("| Variant | n=9 mean | n=9 std |")
+    lines.append("|---|---|---|")
+    lines.append(f"| V0 | {np.mean(v0_all):.4f} | {np.std(v0_all, ddof=1):.4f} |")
+    lines.append(f"| V2-T5 | {np.mean(v2t5_all):.4f} | {np.std(v2t5_all, ddof=1):.4f} |")
+    lines.append(f"| T6 | {np.mean(t6_all):.4f} | {np.std(t6_all, ddof=1):.4f} |")
+    if RANDP_PER_SEED:
+        rp_all = list(RANDP_PER_SEED.values())
+        lines.append(f"| V2-T5 (random pair, n=3) | {np.mean(rp_all):.4f} | {np.std(rp_all, ddof=1):.4f} |")
 
     Path(args.out).write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"\n[ok] wrote {args.out}")
