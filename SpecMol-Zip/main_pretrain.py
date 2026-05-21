@@ -484,6 +484,24 @@ if __name__ == '__main__':
     elif args.dump_gate_stats:
         print("[gate-stats] skipped: requires --use_v2 with a PairToEdgeWeight module")
 
+    # ------------------------------------------------------------------
+    # T7: log the final attention gate (VeriMAP S1/S2 diagnostic).
+    # The gate is a per-head [num_heads] vector on pair_attn after S2; before
+    # S2 it is a scalar on prop1. sigmoid(...).flatten() handles both shapes,
+    # so this one block serves the S1 (scalar) and S2 (per-head) runs alike.
+    # ------------------------------------------------------------------
+    if args.t7:
+        prop1 = spec_model.encoder.prop1
+        gate = getattr(getattr(prop1, "pair_attn", None), "attn_gate", None)
+        if gate is None:
+            gate = getattr(prop1, "attn_gate", None)
+        if gate is not None:
+            sig = [round(float(s), 6)
+                   for s in torch.sigmoid(gate.detach()).flatten().tolist()]
+            print(f"[t7-gate] final per-head sigmoid(gate): {sig}")
+        else:
+            print("[t7-gate] WARNING: --t7 set but no attn_gate found on prop1")
+
     if task_type == 'regression':
         loss_fn = nn.MSELoss(reduction='mean')
     else:
