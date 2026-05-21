@@ -14,7 +14,7 @@
 #
 # Args:
 #   TASK    : bace | bbbp | hiv | clintox | tox21
-#   VARIANT : v0 | v2 | t6 | t6safe | t6safe0
+#   VARIANT : v0 | v2 | t6 | t6safe | t6safe0 | t7
 #   SEED    : 9, 19, or 29 (or any int)
 #
 # Env override:
@@ -83,8 +83,11 @@ case "$VARIANT" in
   t6safe0)
     CMD="$CMD --path down_task_${TASK}_v2 --use_v2 --t6_safe --t6_safe_frozen_zero --diagnostics"
     ;;
+  t7)
+    CMD="$CMD --path down_task_${TASK}_v2 --use_v2 --t7"
+    ;;
   *)
-    echo "Unknown variant: $VARIANT (use v0, v2, t6, t6safe, or t6safe0)" >&2
+    echo "Unknown variant: $VARIANT (use v0, v2, t6, t6safe, t6safe0, or t7)" >&2
     exit 1
     ;;
 esac

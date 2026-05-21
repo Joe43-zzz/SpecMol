@@ -62,6 +62,7 @@ VARIANT_PATTERNS = {
     "t6":      re.compile(r"t6_seed(\d+)(?:_stdout\.log|_\d+\.log|_\d+\.out)$"),
     "t6safe0": re.compile(r"t6safe0_seed(\d+)(?:_stdout\.log|_\d+\.log|_\d+\.out)$"),
     "t6safe":  re.compile(r"t6safe_seed(\d+)(?:_stdout\.log|_\d+\.log|_\d+\.out)$"),
+    "t7":      re.compile(r"t7_seed(\d+)(?:_stdout\.log|_\d+\.log|_\d+\.out)$"),
 }
 
 
@@ -162,7 +163,7 @@ def main():
     parser.add_argument("--log-dir", default=None, help="default: hpc/logs/<task>")
     parser.add_argument("--eval-seeds", default="9,19,29")
     parser.add_argument("--output", default=None, help="default: hpc/results/<task>_all_results.json")
-    parser.add_argument("--variants", default="v0,v2t5,t6,t6safe0,t6safe",
+    parser.add_argument("--variants", default="v0,v2t5,t6,t6safe0,t6safe,t7",
                         help="comma-separated variants to collect")
     parser.add_argument("--metric", default="auto", choices=["auto", "auc", "rmse"],
                         help="auto picks rmse for freesolv, auc otherwise")
