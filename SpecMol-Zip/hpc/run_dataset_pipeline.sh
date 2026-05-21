@@ -29,9 +29,13 @@
 #   ENV_NAME     specmol
 #   FORCE_PAIR_EXTRACT  0   set to 1 to re-extract Uni-Mol pair_repr even if cached
 #   SKIP_PAIR_EXTRACT   0   set to 1 to skip extraction entirely (e.g. HIV uses chunked array job)
+#   BASELINE_ONLY       0   set to 1 to prep V0 data only (skip step 0c pair extract + 0d V2 build)
 #
 # For HIV: run hpc/run_pair_extract.sbatch as Slurm array first, then
 #   SKIP_PAIR_EXTRACT=1 TASK=hiv bash hpc/run_dataset_pipeline.sh prep
+#
+# For V0-only baselines (no pair_rep needed): BASELINE_ONLY=1 — prep stays CPU-only
+# and no chunked array job is needed even for large tasks like HIV.
 ###############################################################################
 set -euo pipefail
 
@@ -47,6 +51,7 @@ PATIENCE="${PATIENCE:-100}"
 ENV_NAME="${ENV_NAME:-specmol}"
 FORCE_PAIR_EXTRACT="${FORCE_PAIR_EXTRACT:-0}"
 SKIP_PAIR_EXTRACT="${SKIP_PAIR_EXTRACT:-0}"
+BASELINE_ONLY="${BASELINE_ONLY:-0}"
 
 LOG_DIR="hpc/logs/${TASK}"
 RESULT_FILE="hpc/results/${TASK}_all_results.json"
@@ -119,33 +124,39 @@ run_prep() {
     python export_unimol_task.py --task "$TASK"
   fi
 
-  echo "[prep] Step 0c: Extract Uni-Mol pair representations..."
-  if [ "${SKIP_PAIR_EXTRACT}" = "1" ]; then
-    echo "[prep] SKIP_PAIR_EXTRACT=1, assuming pair_rep already present at $PAIR_REP_DIR."
-  elif [ -d "$PAIR_REP_DIR" ] && [ "$(ls -A $PAIR_REP_DIR 2>/dev/null)" ] \
-       && [ "${FORCE_PAIR_EXTRACT}" != "1" ]; then
-    echo "[prep] pair_rep already present at $PAIR_REP_DIR, skipping. Set FORCE_PAIR_EXTRACT=1 to redo."
+  if [ "${BASELINE_ONLY}" = "1" ]; then
+    echo "[prep] BASELINE_ONLY=1: skip Step 0c (pair extract) + 0d (V2 build) — V0 needs no pair_rep."
   else
-    SDF_FILE=$(ls unimol_out_${TASK}/sdf/*.sdf 2>/dev/null | head -1)
-    if [ -z "${SDF_FILE:-}" ]; then
-      echo "ERROR: No SDF in unimol_out_${TASK}/sdf" >&2; exit 1
+    echo "[prep] Step 0c: Extract Uni-Mol pair representations..."
+    if [ "${SKIP_PAIR_EXTRACT}" = "1" ]; then
+      echo "[prep] SKIP_PAIR_EXTRACT=1, assuming pair_rep already present at $PAIR_REP_DIR."
+    elif [ -d "$PAIR_REP_DIR" ] && [ "$(ls -A $PAIR_REP_DIR 2>/dev/null)" ] \
+         && [ "${FORCE_PAIR_EXTRACT}" != "1" ]; then
+      echo "[prep] pair_rep already present at $PAIR_REP_DIR, skipping. Set FORCE_PAIR_EXTRACT=1 to redo."
+    else
+      SDF_FILE=$(ls unimol_out_${TASK}/sdf/*.sdf 2>/dev/null | head -1)
+      if [ -z "${SDF_FILE:-}" ]; then
+        echo "ERROR: No SDF in unimol_out_${TASK}/sdf" >&2; exit 1
+      fi
+      python tools/extract_unimol_pair.py \
+        --sdf-path "$SDF_FILE" \
+        --output-dir "$PAIR_REP_DIR" \
+        --batch-size 8 \
+        --device cuda:0
     fi
-    python tools/extract_unimol_pair.py \
-      --sdf-path "$SDF_FILE" \
-      --output-dir "$PAIR_REP_DIR" \
-      --batch-size 8 \
-      --device cuda:0
-  fi
 
-  echo "[prep] Step 0d: Build V2 dataset (with pair_repr)..."
-  python make_task_from_unimol.py --task "$TASK" --mode v2
+    echo "[prep] Step 0d: Build V2 dataset (with pair_repr)..."
+    python make_task_from_unimol.py --task "$TASK" --mode v2
+  fi
 
   echo "[prep] Step 0e: Build baseline unifold dataset (no pair_repr)..."
   python make_task_from_unimol.py --task "$TASK" --mode baseline
 
   echo "[prep] Done."
   echo "  V0 data: ${DATA_UNIFOLD}/processed/"
-  echo "  V2 data: ${DATA_V2}/processed/"
+  if [ "${BASELINE_ONLY}" != "1" ]; then
+    echo "  V2 data: ${DATA_V2}/processed/"
+  fi
 }
 
 # ==========================================================================
