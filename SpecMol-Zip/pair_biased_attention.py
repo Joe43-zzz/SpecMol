@@ -33,10 +33,13 @@ class PairBiasedSparseAttention(nn.Module):
         head_dim:  per-head dim, 32 default
         dropout:   attn dropout, 0.0 for sanity
         init_std:  std for small-init of out_proj and delta_proj weights
+        gate_init: per-head attn gate logit init (default -5.0 -> sigmoid
+                   ~0.0067 ~0, so epoch 0 equals the pure-T5 path)
     """
 
     def __init__(self, node_dim, pair_dim=64, num_heads=4, head_dim=32,
-                 dropout=0.0, init_std=0.02, K_steps=10, use_layernorm=True):
+                 dropout=0.0, init_std=0.02, K_steps=10, use_layernorm=True,
+                 gate_init=-5.0):
         super().__init__()
         self.node_dim = node_dim
         self.pair_dim = pair_dim
@@ -63,8 +66,12 @@ class PairBiasedSparseAttention(nn.Module):
         self.k = nn.Linear(node_dim, self.attn_dim)
         self.v = nn.Linear(node_dim, self.attn_dim)
         # Project attention output back to node_dim so the residual add to
-        # Tx_k preserves shape.
-        self.out_proj = nn.Linear(self.attn_dim, node_dim)
+        # Tx_k preserves shape. bias=False is load-bearing for the VeriMAP
+        # safety floor: the per-head gate (attn_gate) zeroes each head's [N,d]
+        # block before out_proj, but a shared out_proj.bias would be added
+        # AFTER the gate and leak an ungated injection. With bias=False, a gate
+        # driven to -inf makes the attention contribution exactly 0 (VF-equiv).
+        self.out_proj = nn.Linear(self.attn_dim, node_dim, bias=False)
         # bias=True now (E1 fix): with LayerNorm, bias_proj weight uses small
         # init so its output is ~comparable to qk (~0.05 each). Learnable bias
         # gives per-head baseline.
@@ -80,9 +87,15 @@ class PairBiasedSparseAttention(nn.Module):
         nn.init.normal_(self.bias_proj.weight, std=init_std)
         nn.init.zeros_(self.bias_proj.bias)
         nn.init.normal_(self.out_proj.weight, std=scaled_std)
-        nn.init.zeros_(self.out_proj.bias)
         nn.init.normal_(self.delta_proj.weight, std=scaled_std)
         nn.init.zeros_(self.delta_proj.bias)
+
+        # Per-head gate on the node-side attention injection (VeriMAP S2).
+        # Replaces the old scalar attn_gate that lived on ChebnetII_prop_V2:
+        # one logit per head lets the optimizer keep useful heads and shut
+        # harmful ones independently. init -5.0 -> sigmoid ~0.0067 ~0, so
+        # epoch 0 still equals the pure-T5 spectral path (safety floor).
+        self.attn_gate = nn.Parameter(torch.full((num_heads,), float(gate_init)))
 
     def forward(self, x, pair_repr_edge, pair_edge_index):
         """Sparse bidirectional pair-biased attention.
@@ -133,9 +146,13 @@ class PairBiasedSparseAttention(nn.Module):
 
         # Aggregate values: msg[e] = attn[e] * V[dst[e]], scatter-sum by src
         msg = attn.unsqueeze(-1) * V[dst]                # [E, H, d]
-        out = scatter(msg, src, dim=0, dim_size=N, reduce='sum')
+        out = scatter(msg, src, dim=0, dim_size=N, reduce='sum')  # [N, H, d]
+        # Per-head gate: shut heads independently. A gate driven to -inf zeroes
+        # that head's block exactly here, and out_proj is bias-free, so the
+        # attention contribution vanishes exactly (VeriMAP VF-equiv floor).
+        out = out * torch.sigmoid(self.attn_gate).view(1, self.H, 1)
         out = out.reshape(N, self.attn_dim)
-        out = self.out_proj(out)                          # small-init back to node_dim
+        out = self.out_proj(out)                          # bias-free back to node_dim
 
         # Bidirectional: project logits back to pair_dim
         pair_delta = self.delta_proj(logits)              # [E, pair_dim]
@@ -186,11 +203,12 @@ if __name__ == '__main__':
     out, pair_delta = model(x, pair_repr, pair_ei)
     assert out.shape == (N, node_dim), f"out shape: {out.shape}"
     assert pair_delta.shape == (E, pair_dim), f"pair_delta shape: {pair_delta.shape}"
-    # Bounded init: out is small-init * features → expected magnitude ~ init_std * sqrt(attn_dim)
+    # Bounded init: out is per-head-gated (sigmoid(-5)~0.0067) then passed
+    # through small-init out_proj -> expected magnitude tiny.
     out_mag = out.abs().max().item()
     print(f"  out shape={tuple(out.shape)}, pair_delta shape={tuple(pair_delta.shape)}")
-    print(f"  out max abs = {out_mag:.4f} (init_std=0.02 → bounded)")
-    assert out_mag < 0.5, f"out magnitude {out_mag} too large for std=0.02 init"
+    print(f"  out max abs = {out_mag:.4f} (gate~0.0067 x std=0.02 init → bounded)")
+    assert out_mag < 0.5, f"out magnitude {out_mag} too large for gated std=0.02 init"
     print("  PASS")
 
     # -------------------------------------------------------------------- #
@@ -213,6 +231,7 @@ if __name__ == '__main__':
         "out_proj.weight":   model.out_proj.weight.grad is not None and model.out_proj.weight.grad.abs().sum() > 0,
         "bias_proj.weight":  model.bias_proj.weight.grad is not None and model.bias_proj.weight.grad.abs().sum() > 0,
         "delta_proj.weight": model.delta_proj.weight.grad is not None and model.delta_proj.weight.grad.abs().sum() > 0,
+        "attn_gate":         model.attn_gate.grad is not None and model.attn_gate.grad.abs().sum() > 0,
         "x_input":           x_g.grad is not None and x_g.grad.abs().sum() > 0,
         "pair_input":        pair_g.grad is not None and pair_g.grad.abs().sum() > 0,
     }

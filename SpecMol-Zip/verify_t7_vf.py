@@ -90,17 +90,17 @@ def vf_equiv(ds, in_dim, pair_dim, tol=1e-4):
     assert hasattr(prop, "t7_enabled"), \
         "prop.t7_enabled missing — VF-equiv Run B would silently no-op"
 
-    saved_gate = prop.attn_gate.data.clone()
+    saved_gate = prop.pair_attn.attn_gate.data.clone()
     try:
         with torch.no_grad():
-            prop.attn_gate.data.fill_(-1e9)
+            prop.pair_attn.attn_gate.data.fill_(-1e9)
             out_a = model(batch, DEVICE)
-        prop.attn_gate.data.copy_(saved_gate)
+        prop.pair_attn.attn_gate.data.copy_(saved_gate)
         prop.t7_enabled = False
         with torch.no_grad():
             out_b = model(batch, DEVICE)
     finally:
-        prop.attn_gate.data.copy_(saved_gate)
+        prop.pair_attn.attn_gate.data.copy_(saved_gate)
         prop.t7_enabled = True
 
     diffs = {n: (a - b).abs().max().item()
@@ -160,7 +160,7 @@ def vf_grad(ds, in_dim, pair_dim):
         "t7.out_proj":   pa.out_proj.weight,
         "t7.bias_proj":  pa.bias_proj.weight,
         "t7.delta_proj": pa.delta_proj.weight,
-        "t7.attn_gate":  model.encoder.prop1.attn_gate,
+        "t7.attn_gate":  pa.attn_gate,
     }
     status = {
         name: (p.grad is not None and torch.isfinite(p.grad).all().item()

@@ -65,10 +65,11 @@ def run_one_seed(pretrain_seed, eval_splits, device, path="down_task_v2",
     pair_attn = model.encoder.prop1.pair_attn
     q_init = pair_attn.q.weight.norm().item()
     op_init = pair_attn.out_proj.weight.norm().item()
-    attn_gate_init = model.encoder.prop1.attn_gate.item()
+    attn_gate_init = pair_attn.attn_gate.detach().tolist()
     print(f"PairToEdgeWeight bias init: {bias_init:.4f}")
     print(f"T7 q init: {q_init:.4f}, out_proj init: {op_init:.4f}")
-    print(f"T7 attn_gate init: raw={attn_gate_init:.4f} sigmoid={1/(1+2.718**(-attn_gate_init)):.6f}")
+    print(f"T7 attn_gate init: raw={[round(g, 4) for g in attn_gate_init]} "
+          f"sigmoid={[round(1 / (1 + 2.718 ** (-g)), 6) for g in attn_gate_init]}")
 
     best_loss = float("inf")
     cnt_wait = 0
@@ -109,11 +110,12 @@ def run_one_seed(pretrain_seed, eval_splits, device, path="down_task_v2",
 
     bias_final = model.pair_to_edge_weight.mlp[2].bias.item()
     op_final = pair_attn.out_proj.weight.norm().item()
-    attn_gate_final = model.encoder.prop1.attn_gate.item()
+    attn_gate_final = pair_attn.attn_gate.detach().tolist()
     print(f"  Best epoch: {best_t}, best loss: {best_loss:.6f}")
     print(f"  PairToEdgeWeight bias final: {bias_final:.4f}")
     print(f"  T7 out_proj final: {op_final:.4f}")
-    print(f"  T7 attn_gate final: raw={attn_gate_final:.4f} sigmoid={1/(1+2.718**(-attn_gate_final)):.6f}")
+    print(f"  T7 attn_gate final: raw={[round(g, 4) for g in attn_gate_final]} "
+          f"sigmoid={[round(1 / (1 + 2.718 ** (-g)), 6) for g in attn_gate_final]}")
 
     del optimizer, data, loader
     import gc; gc.collect()
@@ -131,9 +133,10 @@ def run_one_seed(pretrain_seed, eval_splits, device, path="down_task_v2",
         "bias_final": round(bias_final, 4),
         "t7_out_proj_init": round(op_init, 4),
         "t7_out_proj_final": round(op_final, 4),
-        "t7_attn_gate_init": round(attn_gate_init, 4),
-        "t7_attn_gate_final": round(attn_gate_final, 4),
-        "t7_attn_gate_sigmoid_final": round(1/(1+2.718**(-attn_gate_final)), 6),
+        "t7_attn_gate_init": [round(g, 4) for g in attn_gate_init],
+        "t7_attn_gate_final": [round(g, 4) for g in attn_gate_final],
+        "t7_attn_gate_sigmoid_final": [round(1 / (1 + 2.718 ** (-g)), 6)
+                                       for g in attn_gate_final],
         "loss_history_sample": [round(loss_history[i], 6) for i in
                                  [0, 1, 2, 5, 10, 50, 100, 200, 500]
                                  if i < len(loss_history)],
