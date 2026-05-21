@@ -6,15 +6,16 @@ modification (to confirm the modification preserved every invariant). A
 modification is only allowed to proceed to an HPC experiment VF once all
 four code VFs here are green.
 
-  VF-equiv : T7 with attn_gate -> -inf and t7_disable_pair_update=True reduces
-             EXACTLY to the pure-T5 spectral path. This is the "provably >= T5"
-             safety floor — every modification must keep it.
+  VF-equiv : with the gate shut and pair updates frozen, T7 is bitwise-identical
+             to the pure-T5 spectral path. Verifies the safety-floor PLUMBING
+             (a modification cannot make T7 worse than T5 when the gate is
+             closed); it does NOT exercise the attention kernel — VF-nan and
+             VF-grad cover that.
   VF-nan   : one fwd+bwd on a real V2 batch produces no NaN/Inf (loss + grads).
   VF-grad  : gradients reach every T7-specific parameter (q/k/v/out_proj/
              bias_proj/delta_proj + attn_gate).
-  VF-batch : per-molecule isolation — perturbing one molecule leaves the other
-             molecules' pooled outputs bit-identical (no cross-molecule
-             attention leakage).
+  VF-batch : per-molecule isolation — perturbing one molecule's node AND pair
+             inputs leaves every other molecule's pooled output bit-identical.
 
 Usage:
     python verify_t7_vf.py [--data-root down_task_v2] [--task bace]
@@ -24,6 +25,7 @@ Exit code 0 = all VFs pass; 1 = at least one failed.
 
 import argparse
 import sys
+import traceback
 
 import torch
 
@@ -36,62 +38,76 @@ from model_gnn_pre_v2 import LH_Direct_V2
 from train_utils import load_pyg_inmemory_split, ours_loss, set_seed
 
 DEVICE = "cpu"
-IN_DIM = 93
-PAIR_DIM = 64
-HID_DIM = 512
-K = 10
+HID_DIM = 512  # tracks main_pretrain.py --hid_dim default
+K = 10         # tracks main_pretrain.py --K default
+# Labels for the LH_Direct_V2._forward_impl return tuple.
+OUTPUT_NAMES = ("low_x", "high_x", "spec_x", "x_fp")
 
 
-def build_t7(disable_pair_update=False, seed=0):
+def build_t7(in_dim, pair_dim, disable_pair_update=False, seed=0):
     """Build a T7 LH_Direct_V2 with a fixed seed so the test is reproducible."""
     set_seed(seed)
     return LH_Direct_V2(
-        in_dim=IN_DIM, hid_dim=HID_DIM, K=K, dprate=0.5, dropout=0.0,
-        is_bns=False, act_fn="relu", type="tri", pair_dim=PAIR_DIM,
+        in_dim=in_dim, hid_dim=HID_DIM, K=K, dprate=0.5, dropout=0.0,
+        is_bns=False, act_fn="relu", type="tri", pair_dim=pair_dim,
         t7=True, t7_disable_pair_update=disable_pair_update,
     ).to(DEVICE)
 
 
-def load_batch(data_root, task, n_graphs):
-    """Load the first `n_graphs` molecules from the V2 'all' split as one batch."""
-    ds = load_pyg_inmemory_split(data_root, task, "all")
+def load_batch(ds, n_graphs):
+    """First `n_graphs` molecules of an already-loaded dataset as one batch."""
     loader = DataLoader(ds, batch_size=n_graphs, shuffle=False)
     return next(iter(loader))
+
+
+def _fwd_bwd(model, batch):
+    """One forward + backward; returns (output_tuple, loss)."""
+    out = model(batch, DEVICE)
+    loss = ours_loss(*out, alpha=1)
+    model.zero_grad()
+    loss.backward()
+    return out, loss
 
 
 # --------------------------------------------------------------------------- #
 # VF-equiv
 # --------------------------------------------------------------------------- #
-def vf_equiv(data_root, task, tol=1e-4):
-    """T7(gate->-inf, disable_pair_update) must equal the pure-T5 spectral path.
+def vf_equiv(ds, in_dim, pair_dim, tol=1e-4):
+    """T7 with the gate shut + pair updates frozen must equal the pure-T5 path.
 
     Run A: T7 path active, attn_gate forced to -1e9 so sigmoid(gate)=0 kills the
            node-side attn_acc injection; t7_disable_pair_update keeps pair_repr
            static so the per-step Laplacian rebuild reproduces the T5 Laplacian.
-    Run B: prop.t7_enabled flipped off -> the prop forward takes the dynamic=False
-           pure-T5 branch on the SAME shared parameters.
-    A and B must be numerically identical (up to float accumulation noise).
+    Run B: prop.t7_enabled flipped off -> the prop forward takes the
+           dynamic=False pure-T5 branch on the SAME shared parameters.
     """
-    model = build_t7(disable_pair_update=True)
+    model = build_t7(in_dim, pair_dim, disable_pair_update=True)
     model.eval()
-    batch = load_batch(data_root, task, n_graphs=6)
+    batch = load_batch(ds, n_graphs=6)
     prop = model.encoder.prop1
+    # If t7_enabled were renamed/removed, Run B would silently stay on the T7
+    # path and the test would pass meaninglessly — fail loudly instead.
+    assert hasattr(prop, "t7_enabled"), \
+        "prop.t7_enabled missing — VF-equiv Run B would silently no-op"
 
-    with torch.no_grad():
-        saved_gate = prop.attn_gate.data.clone()
-        prop.attn_gate.data.fill_(-1e9)
-        out_a = model(batch, DEVICE)
+    saved_gate = prop.attn_gate.data.clone()
+    try:
+        with torch.no_grad():
+            prop.attn_gate.data.fill_(-1e9)
+            out_a = model(batch, DEVICE)
         prop.attn_gate.data.copy_(saved_gate)
-
         prop.t7_enabled = False
-        out_b = model(batch, DEVICE)
+        with torch.no_grad():
+            out_b = model(batch, DEVICE)
+    finally:
+        prop.attn_gate.data.copy_(saved_gate)
         prop.t7_enabled = True
 
-    names = ["low_x", "high_x", "spec_x", "x_fp"]
-    diffs = {n: (a - b).abs().max().item() for n, a, b in zip(names, out_a, out_b)}
+    diffs = {n: (a - b).abs().max().item()
+             for n, a, b in zip(OUTPUT_NAMES, out_a, out_b)}
     max_diff = max(diffs.values())
     ok = max_diff < tol
-    print(f"  VF-equiv : max|A-B| = {max_diff:.2e}  (tol {tol})  per-head={diffs}")
+    print(f"  VF-equiv : max|A-B| = {max_diff:.2e}  (tol {tol})  {diffs}")
     print(f"             {'PASS' if ok else 'FAIL'} — T7 reduces to T5 safety floor")
     return ok
 
@@ -99,16 +115,12 @@ def vf_equiv(data_root, task, tol=1e-4):
 # --------------------------------------------------------------------------- #
 # VF-nan
 # --------------------------------------------------------------------------- #
-def vf_nan(data_root, task):
+def vf_nan(ds, in_dim, pair_dim):
     """One fwd+bwd on a real V2 batch must produce no NaN/Inf anywhere."""
-    model = build_t7()
+    model = build_t7(in_dim, pair_dim)
     model.train()
-    batch = load_batch(data_root, task, n_graphs=8)
-
-    out = model(batch, DEVICE)
-    loss = ours_loss(*out, alpha=1)
-    model.zero_grad()
-    loss.backward()
+    batch = load_batch(ds, n_graphs=8)
+    out, loss = _fwd_bwd(model, batch)
 
     loss_ok = torch.isfinite(loss).all().item()
     out_ok = all(torch.isfinite(t).all().item() for t in out)
@@ -126,16 +138,19 @@ def vf_nan(data_root, task):
 # --------------------------------------------------------------------------- #
 # VF-grad
 # --------------------------------------------------------------------------- #
-def vf_grad(data_root, task):
-    """Gradients must reach every T7-specific parameter group."""
-    model = build_t7()  # disable_pair_update=False so delta_proj is on the graph
-    model.train()
-    batch = load_batch(data_root, task, n_graphs=8)
+def vf_grad(ds, in_dim, pair_dim):
+    """Gradients must reach every T7-specific parameter group.
 
-    out = model(batch, DEVICE)
-    loss = ours_loss(*out, alpha=1)
-    model.zero_grad()
-    loss.backward()
+    Runs the real T7 config (disable_pair_update=False). This is load-bearing,
+    not a convenience: under disable_pair_update=True the updated pair_repr is
+    discarded, so delta_proj's output reaches no loss term and is structurally
+    dead — the grad test must use the config where every T7 param is on the
+    graph.
+    """
+    model = build_t7(in_dim, pair_dim)  # disable_pair_update=False — see docstring
+    model.train()
+    batch = load_batch(ds, n_graphs=8)
+    _fwd_bwd(model, batch)
 
     pa = model.encoder.prop1.pair_attn
     params = {
@@ -147,11 +162,11 @@ def vf_grad(data_root, task):
         "t7.delta_proj": pa.delta_proj.weight,
         "t7.attn_gate":  model.encoder.prop1.attn_gate,
     }
-    status = {}
-    for name, p in params.items():
-        g = p.grad
-        status[name] = g is not None and torch.isfinite(g).all().item() \
-            and g.abs().sum().item() > 0.0
+    status = {
+        name: (p.grad is not None and torch.isfinite(p.grad).all().item()
+               and p.grad.abs().sum().item() > 0.0)
+        for name, p in params.items()
+    }
     ok = all(status.values())
     dead = [k for k, v in status.items() if not v]
     print(f"  VF-grad  : {status}")
@@ -163,33 +178,40 @@ def vf_grad(data_root, task):
 # --------------------------------------------------------------------------- #
 # VF-batch
 # --------------------------------------------------------------------------- #
-def vf_batch(data_root, task, tol=1e-6):
-    """Perturbing the last molecule must leave molecule 0's pooled output exact.
+def vf_batch(ds, in_dim, pair_dim, tol=1e-6):
+    """Perturbing one molecule must leave every other molecule's output exact.
 
-    Cross-molecule attention leakage would make molecule 0 depend on molecule
-    N-1's node features; this asserts it does not.
+    Perturbs BOTH input channels of the last molecule — node features `x` and
+    pair representations `pair_repr_edge` — because cross-molecule attention
+    leakage could enter either through the Q/K/V path (from x) or the
+    bias/delta path (from pair_repr_edge).
     """
-    model = build_t7()
+    model = build_t7(in_dim, pair_dim)
     model.eval()
-    batch = load_batch(data_root, task, n_graphs=4)
+    batch = load_batch(ds, n_graphs=4)
 
     with torch.no_grad():
         out_base = model(batch, DEVICE)
 
         batch2 = batch.clone()
         last = int(batch2.batch.max().item())
-        mask = batch2.batch == last
-        batch2.x[mask] = batch2.x[mask] + torch.randn_like(batch2.x[mask])
+        node_mask = batch2.batch == last
+        batch2.x[node_mask] += torch.randn_like(batch2.x[node_mask])
+        # pair_edge_index is intra-molecule, so the source node's graph id
+        # identifies which pair rows belong to the last molecule.
+        pair_mask = batch2.batch[batch2.pair_edge_index[0]] == last
+        batch2.pair_repr_edge[pair_mask] += torch.randn_like(
+            batch2.pair_repr_edge[pair_mask]
+        )
         out_pert = model(batch2, DEVICE)
 
-    names = ["low_x", "high_x", "spec_x", "x_fp"]
-    # graph 0 is row 0 of each pooled [n_graphs, hid] output
-    diffs = {n: (a[0] - b[0]).abs().max().item()
-             for n, a, b in zip(names, out_base, out_pert)}
+    # Rows 0..last-1 are the untouched molecules; each must be bit-identical.
+    diffs = {n: (a[:last] - b[:last]).abs().max().item()
+             for n, a, b in zip(OUTPUT_NAMES, out_base, out_pert)}
     max_diff = max(diffs.values())
     ok = max_diff < tol
-    print(f"  VF-batch : mol-0 max drift after perturbing mol-{last} = "
-          f"{max_diff:.2e}  (tol {tol})  {diffs}")
+    print(f"  VF-batch : max drift of mols 0..{last - 1} after perturbing "
+          f"mol-{last} = {max_diff:.2e}  (tol {tol})  {diffs}")
     print(f"             {'PASS' if ok else 'FAIL'} — no cross-molecule leakage")
     return ok
 
@@ -197,14 +219,26 @@ def vf_batch(data_root, task, tol=1e-6):
 # --------------------------------------------------------------------------- #
 def main():
     parser = argparse.ArgumentParser(description="T7 code-level verification functions")
-    parser.add_argument("--data-root", default="down_task_v2",
-                        help="V2-format dataset root (must have processed/<task>_all.pt)")
+    parser.add_argument(
+        "--data-root", default="down_task_v2",
+        help="V2-format dataset root with processed/<task>_all.pt (default "
+             "down_task_v2 = local pre-B4 BACE V2 archive; fine for code VFs, "
+             "which test structure not accuracy)",
+    )
     parser.add_argument("--task", default="bace")
     args = parser.parse_args()
 
     print("=" * 68)
     print(f"T7 code VFs — data_root={args.data_root} task={args.task}")
     print("=" * 68)
+
+    # Load the dataset once; the V2 'all' split is large (hundreds of MB) and
+    # each VF only needs a handful of molecules from it.
+    ds = load_pyg_inmemory_split(args.data_root, args.task, "all")
+    sample = ds[0]
+    in_dim = sample.x.size(1)
+    pair_dim = sample.pair_repr_edge.size(1)
+    print(f"dataset: {len(ds)} graphs  in_dim={in_dim}  pair_dim={pair_dim}\n")
 
     results = {}
     for name, fn in [
@@ -214,17 +248,16 @@ def main():
         ("VF-batch", vf_batch),
     ]:
         try:
-            results[name] = fn(args.data_root, args.task)
+            results[name] = fn(ds, in_dim, pair_dim)
         except Exception as exc:  # a crash IS a verification failure
-            import traceback
             traceback.print_exc()
             print(f"  {name} : FAIL — raised {type(exc).__name__}: {exc}")
             results[name] = False
         print("-" * 68)
 
     n_pass = sum(results.values())
-    print(f"SUMMARY: {n_pass}/{len(results)} code VFs passed  -> "
-          f"{dict((k, 'PASS' if v else 'FAIL') for k, v in results.items())}")
+    summary = {k: ("PASS" if v else "FAIL") for k, v in results.items()}
+    print(f"SUMMARY: {n_pass}/{len(results)} code VFs passed  -> {summary}")
     return 0 if all(results.values()) else 1
 
 
