@@ -66,14 +66,23 @@ RANDP_PER_SEED = {
     29: (0.8268 + 0.8321 + 0.8256) / 3,  # 0.8282
 }
 
+# --- T7 extension data (FUTURE) ---
+# Populated only if outcome A triggers T7 n=9 scale-up. Until then, leaving
+# this empty causes the script to silently skip T7 from the n=9 table.
+T7_EXT_PER_SEED: dict[int, float] = {}
+
 
 def load_original_n3():
     path = REPO / "bbbp_all_results.json"
     d = json.loads(path.read_text(encoding="utf-8"))
     out = {}
     for label, src_key in [("V0", "v0_baseline"), ("V2-T5", "v2_t5_static_pair"),
-                            ("T6", "t6_dynamic_pair_node")]:
-        seeds = d[src_key]["results"]
+                            ("T6", "t6_dynamic_pair_node"), ("T7", "t7")]:
+        block = d.get(src_key)
+        if not block:
+            # T7 expected absent until user merges bare-T7 results manually.
+            continue
+        seeds = block.get("results", {})
         per_seed_means = []
         for sk, sv in seeds.items():
             if "mean" in sv:
@@ -97,6 +106,7 @@ def main():
     v2t5_all = orig["V2-T5"] + list(V2T5_EXT_PER_SEED.values())
     v0_all = orig["V0"] + list(V0_EXT_PER_SEED.values())
     t6_all = orig["T6"] + list(T6_EXT_PER_SEED.values())
+    t7_all = orig.get("T7", []) + list(T7_EXT_PER_SEED.values())
 
     print("\nV2-T5 BBBP at scale:")
     print(f"  n=3 original: mean={np.mean(orig['V2-T5']):.4f} std={np.std(orig['V2-T5'], ddof=1):.4f}")
@@ -112,14 +122,18 @@ def main():
         ("V2-T5", V2T5_EXT_PER_SEED, v2t5_all),
         ("V0", V0_EXT_PER_SEED, v0_all),
         ("T6", T6_EXT_PER_SEED, t6_all),
+        ("T7", T7_EXT_PER_SEED, t7_all),
     ]:
+        if label not in orig:
+            # T7 row skipped if no n=3 data merged in yet.
+            continue
         n3_mean = np.mean(orig[label])
-        n3_std = np.std(orig[label], ddof=1)
+        n3_std = np.std(orig[label], ddof=1) if len(orig[label]) > 1 else 0.0
         ext_vals = list(ext_dict.values())
         n6_str = f"{np.mean(ext_vals):.4f}" if ext_vals else "pending"
         n6_std_str = f"{np.std(ext_vals, ddof=1):.4f}" if len(ext_vals) > 1 else "pending"
         nc_mean = np.mean(all_seeds)
-        nc_std = np.std(all_seeds, ddof=1)
+        nc_std = np.std(all_seeds, ddof=1) if len(all_seeds) > 1 else 0.0
         lines.append(f"| {label} | {n3_mean:.4f} | {n3_std:.4f} | "
                      f"{n6_str} | {n6_std_str} | "
                      f"{len(all_seeds)} | {nc_mean:.4f} | {nc_std:.4f} |")
@@ -147,6 +161,9 @@ def main():
     lines.append(f"| V0 | {np.mean(v0_all):.4f} | {np.std(v0_all, ddof=1):.4f} |")
     lines.append(f"| V2-T5 | {np.mean(v2t5_all):.4f} | {np.std(v2t5_all, ddof=1):.4f} |")
     lines.append(f"| T6 | {np.mean(t6_all):.4f} | {np.std(t6_all, ddof=1):.4f} |")
+    if t7_all:
+        t7_std = np.std(t7_all, ddof=1) if len(t7_all) > 1 else 0.0
+        lines.append(f"| T7 | {np.mean(t7_all):.4f} | {t7_std:.4f} |")
     if RANDP_PER_SEED:
         rp_all = list(RANDP_PER_SEED.values())
         lines.append(f"| V2-T5 (random pair, n=3) | {np.mean(rp_all):.4f} | {np.std(rp_all, ddof=1):.4f} |")

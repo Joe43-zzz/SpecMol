@@ -52,11 +52,35 @@ def _bace_per_seed_mean(block: dict) -> dict[str, float]:
     for seed_key, entry in block.get("results_per_seed", {}).items():
         if "mean_test_auc" in entry:
             out[seed_key] = float(entry["mean_test_auc"])
+        elif "mean_test_metric" in entry:
+            # hpc/collect_results.py output uses generic "metric" naming
+            out[seed_key] = float(entry["mean_test_metric"])
         elif "eval_splits" in entry:
-            vals = [float(r["test_auc"]) for r in entry["eval_splits"].values()]
+            vals = [
+                float(r.get("test_auc", r.get("test_metric", 0.0)))
+                for r in entry["eval_splits"].values()
+                if "test_auc" in r or "test_metric" in r
+            ]
             if vals:
                 out[seed_key] = statistics.mean(vals)
     return out
+
+
+def _collect_t7_per_seed_mean(data: dict) -> dict[str, float]:
+    """Extract per-seed means from hpc/collect_results.py output for the t7 variant.
+
+    Used when bare-T7 results live in a separate JSON (bbbp_t7_bare_results.json
+    or bace_t7_bare_results.json) rather than being merged into the canonical
+    results file. Returns {} if t7 not present.
+    """
+    if not data:
+        return {}
+    variants = data.get("variants", {})
+    t7 = variants.get("t7")
+    if not t7:
+        return {}
+    # collect_results.py output uses "results_per_seed" + "mean_test_metric"
+    return _bace_per_seed_mean(t7)
 
 
 def _freesolv_per_seed(block: dict) -> dict[str, float]:
@@ -150,6 +174,13 @@ def main() -> None:
     v2_bbbp = _bbbp_per_seed_mean(bbbp.get("v2_t5_static_pair", {}))
     t6_bbbp = _bbbp_per_seed_mean(bbbp.get("t6_dynamic_pair_node", {}))
 
+    # Bare-T7 from S1: prefer separate file (collector format); fall back to
+    # legacy "t7" key in bbbp_all_results.json if user merged manually.
+    t7_bbbp_raw = _load("bbbp_t7_bare_results.json")
+    t7_bbbp = _collect_t7_per_seed_mean(t7_bbbp_raw) if t7_bbbp_raw else {}
+    if not t7_bbbp:
+        t7_bbbp = _bbbp_per_seed_mean(bbbp.get("t7", {}))
+
     v0_bace = _bace_per_seed_mean(bace.get("baseline", {}))
     fp_bace = _bace_per_seed_mean(bace.get("fp_only", {}))
 
@@ -160,6 +191,9 @@ def main() -> None:
         _compare("BBBP V2-T5 vs V0", "V2-T5", v2_bbbp, "V0", v0_bbbp, higher_is_better=True),
         _compare("BBBP T6 vs V0",    "T6",    t6_bbbp, "V0", v0_bbbp, higher_is_better=True),
         _compare("BBBP V2-T5 vs T6", "V2-T5", v2_bbbp, "T6", t6_bbbp, higher_is_better=True),
+        _compare("BBBP T7 vs V2-T5", "T7", t7_bbbp, "V2-T5", v2_bbbp, higher_is_better=True),
+        _compare("BBBP T7 vs T6",    "T7", t7_bbbp, "T6",    t6_bbbp, higher_is_better=True),
+        _compare("BBBP T7 vs V0",    "T7", t7_bbbp, "V0",    v0_bbbp, higher_is_better=True),
         _compare("BACE FP-only vs V0", "FP-only", fp_bace, "V0", v0_bace, higher_is_better=True),
         _compare("FreeSolv V2-T5 vs V0", "V2-T5", v2_fs, "V0", v0_fs, higher_is_better=False),
     ]
