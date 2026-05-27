@@ -11,6 +11,7 @@ T7 mode: forward() applies sparse pair-biased multi-head attention each K-step.
 """
 
 import math
+import os
 import torch
 
 from torch_geometric.nn.conv import MessagePassing
@@ -139,8 +140,10 @@ class ChebnetII_prop_V2(MessagePassing):
 
     @staticmethod
     def _pair_cosine(before, after):
-        before = before.detach().reshape(1, -1).double()
-        after = after.detach().reshape(1, -1).double()
+        if not os.environ.get("T7_DIAG"):
+            return 0.0
+        before = before.detach().reshape(1, -1).float()
+        after = after.detach().reshape(1, -1).float()
         cosine = F.cosine_similarity(before, after, dim=1).item()
         return max(min(cosine, 1.0), -1.0)
 
@@ -265,7 +268,16 @@ class ChebnetII_prop_V2(MessagePassing):
             )
             if not self.t7_disable_pair_update:
                 pair_repr_edge = pair_after
-            attn_acc = attn_acc + coe[1] * out_attn
+            # S3b (VeriMAP Rung 2, 2026-05-27): uniform accumulation, no coe[i]
+            # weighting. coe[i] are Chebyshev spectral coefficients whose
+            # magnitudes and signs are calibrated to filter constraints, not to
+            # weight attention outputs. Multiplying attention by coe[i] can
+            # invert the attention signal (negative coe) and amplifies whatever
+            # spectral shape exists, decoupled from attention quality.
+            # The per-head attn_gate (inside PairBiasedSparseAttention) is the
+            # legitimate scaling channel; final averaging by K happens at the
+            # injection site below.
+            attn_acc = attn_acc + out_attn          # was: + coe[1] * out_attn
 
         out = coe[0] / 2 * Tx_0 + coe[1] * Tx_1
 
@@ -298,7 +310,7 @@ class ChebnetII_prop_V2(MessagePassing):
                 )
                 if not self.t7_disable_pair_update:
                     pair_repr_edge = pair_after
-                attn_acc = attn_acc + coe[i] * out_attn
+                attn_acc = attn_acc + out_attn      # S3b: was + coe[i] * out_attn
 
             Tx_0, Tx_1 = Tx_1, Tx_2
 
@@ -307,7 +319,9 @@ class ChebnetII_prop_V2(MessagePassing):
             # (each out_attn was scaled by sigmoid(pair_attn.attn_gate) before
             # the bias-free out_proj). At init the gates are -5.0 -> ≈0, so
             # epoch 0 still equals the pure-T5 spectral path.
-            out = out + attn_acc
+            # S3b: divide by K so the accumulated attention magnitude doesn't
+            # scale with the polynomial order. attn_gate controls total weight.
+            out = out + attn_acc / max(self.K, 1)
 
         if dynamic:
             return out, pair_repr_edge

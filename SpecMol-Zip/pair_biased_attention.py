@@ -62,9 +62,19 @@ class PairBiasedSparseAttention(nn.Module):
             self.x_norm = nn.Identity()
             self.pair_norm = nn.Identity()
 
-        self.q = nn.Linear(node_dim, self.attn_dim)
-        self.k = nn.Linear(node_dim, self.attn_dim)
-        self.v = nn.Linear(node_dim, self.attn_dim)
+        # S3a (VeriMAP Rung 2, 2026-05-27): learned node embedding before Q/K/V.
+        # Master plan weakness #2 — Q·K on raw 93-dim atom features carries
+        # near-zero content. Project Tx_k into the attention-dim space first
+        # (Linear + GELU), giving the attention block a richer per-node
+        # representation to query/key/value against. Bare-T7 (without this)
+        # scored seed 9 BBBP 0.834 vs V2-T5 0.862.
+        self.node_proj = nn.Sequential(
+            nn.Linear(node_dim, self.attn_dim),
+            nn.GELU(),
+        )
+        self.q = nn.Linear(self.attn_dim, self.attn_dim)
+        self.k = nn.Linear(self.attn_dim, self.attn_dim)
+        self.v = nn.Linear(self.attn_dim, self.attn_dim)
         # Project attention output back to node_dim so the residual add to
         # Tx_k preserves shape. bias=False is load-bearing for the VeriMAP
         # safety floor: the per-head gate (attn_gate) zeroes each head's [N,d]
@@ -129,9 +139,13 @@ class PairBiasedSparseAttention(nn.Module):
         x_n = self.x_norm(x)
         pair_n = self.pair_norm(pair_repr_edge)
 
-        Q = self.q(x_n).view(N, self.H, self.d)
-        K = self.k(x_n).view(N, self.H, self.d)
-        V = self.v(x_n).view(N, self.H, self.d)
+        # S3a: learned node embedding so Q/K/V operate in attn_dim space
+        # rather than directly on raw 93-dim features.
+        x_proj = self.node_proj(x_n)
+
+        Q = self.q(x_proj).view(N, self.H, self.d)
+        K = self.k(x_proj).view(N, self.H, self.d)
+        V = self.v(x_proj).view(N, self.H, self.d)
 
         # Sparse logits at pair edges: [E, H]
         qk = (Q[src] * K[dst]).sum(-1) / (self.d ** 0.5)
