@@ -33,13 +33,18 @@ class PairBiasedSparseAttention(nn.Module):
         head_dim:  per-head dim, 32 default
         dropout:   attn dropout, 0.0 for sanity
         init_std:  std for small-init of out_proj and delta_proj weights
-        gate_init: per-head attn gate logit init (default -5.0 -> sigmoid
-                   ~0.0067 ~0, so epoch 0 equals the pure-T5 path)
+        gate_init: per-head attn gate logit init (default -2.0 -> sigmoid
+                   ~0.12; gives the optimizer ~16x more gate gradient signal
+                   than the prior -5.0 init, which empirically froze gates
+                   at sigmoid ~0.007 across 3 BBBP seeds 2026-05-27 since
+                   contrastive pretraining loss did not require attention).
+                   The VeriMAP VF-equiv floor is still reachable by setting
+                   gate_init=-1e9 (still bitwise ≡ V2-T5 in that mode).
     """
 
     def __init__(self, node_dim, pair_dim=64, num_heads=4, head_dim=32,
                  dropout=0.0, init_std=0.02, K_steps=10, use_layernorm=True,
-                 gate_init=-5.0):
+                 gate_init=-2.0):
         super().__init__()
         self.node_dim = node_dim
         self.pair_dim = pair_dim
@@ -103,8 +108,12 @@ class PairBiasedSparseAttention(nn.Module):
         # Per-head gate on the node-side attention injection (VeriMAP S2).
         # Replaces the old scalar attn_gate that lived on ChebnetII_prop_V2:
         # one logit per head lets the optimizer keep useful heads and shut
-        # harmful ones independently. init -5.0 -> sigmoid ~0.0067 ~0, so
-        # epoch 0 still equals the pure-T5 spectral path (safety floor).
+        # harmful ones independently. init -2.0 -> sigmoid ~0.12, giving the
+        # optimizer real gradient signal (sigmoid'(-2)=0.106 vs sigmoid'(-5)=
+        # 0.0066) so the gate can actually move; the prior -5.0 init froze
+        # all gates at sigmoid ~0.007 across 3 BBBP seeds (2026-05-27),
+        # making the entire attention block a dead-weight pass-through.
+        # Safety floor (≡ V2-T5) is still reachable by passing gate_init=-1e9.
         self.attn_gate = nn.Parameter(torch.full((num_heads,), float(gate_init)))
 
     def forward(self, x, pair_repr_edge, pair_edge_index):
