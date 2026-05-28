@@ -53,6 +53,10 @@ fi
 
 conda activate "$ENV_NAME"
 
+# Force unbuffered stdout so progress is visible in real time (1000-epoch
+# pretrain otherwise silent until process exit due to block buffering).
+export PYTHONUNBUFFERED=1
+
 echo "JOB_ID=${SLURM_JOB_ID:-none}"
 echo "HOST=$(hostname)"
 echo "TASK=$TASK"

@@ -34,6 +34,8 @@ fi
 
 conda activate "$ENV_NAME"
 
+export PYTHONUNBUFFERED=1
+
 echo "JOB_ID=${SLURM_JOB_ID:-none}"
 echo "HOST=$(hostname)"
 echo "TASK=freesolv"
