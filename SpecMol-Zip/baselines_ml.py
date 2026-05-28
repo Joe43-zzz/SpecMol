@@ -69,6 +69,20 @@ DATASETS = {
         "split_col": None,
         "task": "regression",
     },
+    "esol": {
+        "csv": "dataset/esol/raw/smiles.csv",
+        "smiles_col": 0,  # no header (column 0 = SMILES, column 1 = log-solubility)
+        "label_col": 1,
+        "split_col": None,
+        "task": "regression",
+    },
+    "lipo": {
+        "csv": "dataset/lipo/raw/smiles.csv",
+        "smiles_col": 0,  # no header (column 0 = SMILES, column 1 = lipophilicity)
+        "label_col": 1,
+        "split_col": None,
+        "task": "regression",
+    },
     # Multi-label classification: label_col is a list of column indices/names.
     # Aggregated metric reported in mean/std is macro_roc_auc; per-task numbers
     # are kept in the per-seed payload for transparency.
