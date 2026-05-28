@@ -17,6 +17,9 @@ TASK_TO_LOADER = {
     "hiv": dc.molnet.load_hiv,
     "clintox": dc.molnet.load_clintox,
     "tox21": dc.molnet.load_tox21,
+    "esol": dc.molnet.load_delaney,
+    "lipo": dc.molnet.load_lipo,
+    "freesolv": dc.molnet.load_freesolv,
 }
 
 

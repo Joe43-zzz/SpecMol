@@ -1,0 +1,148 @@
+{
+  "bbbp": {
+    "dataset": "bbbp",
+    "csv_path": "dataset\\BBBP.csv",
+    "n_molecules_parsed": 2039,
+    "n_molecules_failed_parse": 11,
+    "n_molecules_with_any_zeroed_atom": 1966,
+    "frac_molecules_with_any_zeroed_atom": 0.9642,
+    "total_atoms": 49068,
+    "total_atoms_zeroed_outdeg": 9380,
+    "global_frac_atoms_zeroed": 0.1912,
+    "per_molecule_frac_zeroed_mean": 0.1917,
+    "per_molecule_frac_zeroed_median": 0.1818,
+    "per_molecule_frac_zeroed_std": 0.1113,
+    "zeroed_symbol_histogram_top10": [
+      [
+        "O",
+        4467
+      ],
+      [
+        "C",
+        3272
+      ],
+      [
+        "Cl",
+        591
+      ],
+      [
+        "F",
+        490
+      ],
+      [
+        "N",
+        427
+      ],
+      [
+        "Br",
+        48
+      ],
+      [
+        "H",
+        40
+      ],
+      [
+        "Na",
+        21
+      ],
+      [
+        "S",
+        18
+      ],
+      [
+        "I",
+        5
+      ]
+    ]
+  },
+  "bace": {
+    "dataset": "bace",
+    "csv_path": "dataset\\bace.csv",
+    "n_molecules_parsed": 1513,
+    "n_molecules_failed_parse": 0,
+    "n_molecules_with_any_zeroed_atom": 1509,
+    "frac_molecules_with_any_zeroed_atom": 0.9974,
+    "total_atoms": 51577,
+    "total_atoms_zeroed_outdeg": 9155,
+    "global_frac_atoms_zeroed": 0.1775,
+    "per_molecule_frac_zeroed_mean": 0.1719,
+    "per_molecule_frac_zeroed_median": 0.1724,
+    "per_molecule_frac_zeroed_std": 0.063,
+    "zeroed_symbol_histogram_top10": [
+      [
+        "C",
+        3786
+      ],
+      [
+        "O",
+        3230
+      ],
+      [
+        "F",
+        1252
+      ],
+      [
+        "N",
+        857
+      ],
+      [
+        "Cl",
+        30
+      ]
+    ]
+  },
+  "freesolv": {
+    "dataset": "freesolv",
+    "csv_path": "dataset\\freesolv\\raw\\smiles.csv",
+    "n_molecules_parsed": 642,
+    "n_molecules_failed_parse": 0,
+    "n_molecules_with_any_zeroed_atom": 574,
+    "frac_molecules_with_any_zeroed_atom": 0.8941,
+    "total_atoms": 5600,
+    "total_atoms_zeroed_outdeg": 1344,
+    "global_frac_atoms_zeroed": 0.24,
+    "per_molecule_frac_zeroed_mean": 0.2592,
+    "per_molecule_frac_zeroed_median": 0.2308,
+    "per_molecule_frac_zeroed_std": 0.1785,
+    "zeroed_symbol_histogram_top10": [
+      [
+        "O",
+        428
+      ],
+      [
+        "C",
+        395
+      ],
+      [
+        "Cl",
+        306
+      ],
+      [
+        "F",
+        105
+      ],
+      [
+        "N",
+        50
+      ],
+      [
+        "Br",
+        30
+      ],
+      [
+        "S",
+        17
+      ],
+      [
+        "I",
+        13
+      ]
+    ]
+  },
+  "_meta": {
+    "description": "Pre-B4 audit: fraction of heavy atoms with out-degree 0 in symmetric Laplacian under unidirectional [begin, end] bond edges.",
+    "method": "iterate mol.GetBonds(), record only [GetBeginAtomIdx, GetEndAtomIdx], compute per-atom out-degree as count of times the atom appears as begin.",
+    "bug_fix_commit": "909966bd (2026-05-13)",
+    "fix_diff_lines": "create_data_DC.py:65-70 now appends [end, begin] alongside [begin, end]."
+  }
+}
