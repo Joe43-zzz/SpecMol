@@ -20,8 +20,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from rdkit import Chem, RDLogger
 
 from unimol_tools.data.datahub import DataHub
+
+RDLogger.logger().setLevel(RDLogger.CRITICAL)
 
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -69,6 +72,21 @@ def main():
         cols = ["smiles"] + [f"label_{i}" for i in range(n_labels)]
         df_raw.columns = cols
         target_cols = cols[1:]
+
+    # Filter RDKit-parseable SMILES. Unimol_tools' datareader silently drops
+    # "illegal" SMILES (e.g. Tox21 contains 8 [AlH3] organometallics) but does
+    # not update raw_data, causing a downstream length mismatch in save_mol2sdf
+    # ("Length of values (7823) does not match length of index (7831)").
+    # Pre-filtering here keeps the DataFrame and the conformer list in sync.
+    n_before = len(df_raw)
+    rdkit_ok = df_raw["smiles"].apply(
+        lambda s: Chem.MolFromSmiles(str(s)) is not None
+    )
+    df_raw = df_raw[rdkit_ok].reset_index(drop=True)
+    n_after = len(df_raw)
+    if n_after < n_before:
+        print(f"[filter] dropped {n_before - n_after}/{n_before} SMILES "
+              f"that RDKit cannot parse")
 
     # Save as proper CSV with header for DataHub
     csv_for_unimol = output_root / f"{task}_for_unimol.csv"

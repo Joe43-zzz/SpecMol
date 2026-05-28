@@ -53,6 +53,11 @@ FORCE_PAIR_EXTRACT="${FORCE_PAIR_EXTRACT:-0}"
 SKIP_PAIR_EXTRACT="${SKIP_PAIR_EXTRACT:-0}"
 BASELINE_ONLY="${BASELINE_ONLY:-0}"
 
+# Uni-Mol checkpoint + dictionary paths required by tools/extract_unimol_pair.py.
+# Default to the canonical MBZUAI HPC layout; override via env if needed.
+export UNIMOL_CKPT="${UNIMOL_CKPT:-$HOME/zhoutianyang/SpecMol/SpecMol-Zip/unimol_weights/mol_pre_all_h_220816.pt}"
+export UNIMOL_DICT="${UNIMOL_DICT:-$HOME/miniconda3/envs/specmol/lib/python3.10/site-packages/unimol_tools/weights/mol.dict.txt}"
+
 LOG_DIR="hpc/logs/${TASK}"
 RESULT_FILE="hpc/results/${TASK}_all_results.json"
 PAIR_REP_DIR="unimol_out_${TASK}/pair_rep"
