@@ -3,9 +3,11 @@
 Reads:
     hpc/results/freesolv_v0_seed{9,19,29}.json
     hpc/results/freesolv_v2t5_seed{9,19,29}.json
+    hpc/results/freesolv_unimol_v2t5_seed{9,19,29}.json
 Writes:
     freesolv_baseline_results.json
     freesolv_v2t5_results.json
+    freesolv_unimol_v2t5_results.json
 
 Each per-seed JSON is the output of run_freesolv_{baseline,v2t5}.py with
 --results-path set to a per-seed file. We just merge their results_per_seed
@@ -36,6 +38,21 @@ VARIANTS = {
         "out": REPO / "freesolv_v2t5_results.json",
         "experiment": "FreeSolv V2-T5 (LH_Direct_V2 + GBF pair_repr)",
         "data_root": "down_task_freesolv_v2",
+        "pair_repr_source": "RDKit 3D + GBF expansion (64-dim, max_dist=10A, sigma=0.5)",
+    },
+    "unimol_v2t5": {
+        "prefix": "freesolv_unimol_v2t5_seed",
+        "out": REPO / "freesolv_unimol_v2t5_results.json",
+        "experiment": "FreeSolv V2-T5 (LH_Direct_V2 + Uni-Mol pair_repr)",
+        "data_root": "down_task_freesolv_unimol_v2",
+        "pair_repr_source": "Uni-Mol encoder_pair_rep (64-dim)",
+    },
+    "t7": {
+        "prefix": "freesolv_t7_seed",
+        "out": REPO / "freesolv_t7_bare_results.json",
+        "experiment": "FreeSolv T7 (LH_Direct_V2 + GBF pair_repr + pair-biased attention)",
+        "data_root": "down_task_freesolv_v2",
+        "pair_repr_source": "RDKit 3D + GBF expansion (64-dim, max_dist=10A, sigma=0.5)",
     },
 }
 
@@ -78,8 +95,8 @@ def aggregate(variant_key: str, cfg: dict) -> None:
         "results_per_seed": per_seed,
         "summary": summary,
     }
-    if variant_key == "v2t5":
-        merged["pair_repr_source"] = "RDKit 3D + GBF expansion (64-dim, max_dist=10A, sigma=0.5)"
+    if "pair_repr_source" in cfg:
+        merged["pair_repr_source"] = cfg["pair_repr_source"]
 
     cfg["out"].write_text(json.dumps(merged, indent=2), encoding="utf-8")
     print(f"[ok] wrote {cfg['out'].name}  mean={summary['mean_rmse']}  std={summary['std_rmse']}")

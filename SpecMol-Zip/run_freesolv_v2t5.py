@@ -1,4 +1,4 @@
-"""Run FreeSolv V2-T5 (LH_Direct_V2 with GBF pair_repr) with regression downstream.
+"""Run FreeSolv V2-T5/T7 on FreeSolv with pair_repr regression downstream.
 
 Usage:
     python run_freesolv_v2t5.py --seed 9
@@ -28,6 +28,27 @@ TASK = "freesolv"
 DATA_ROOT_DEFAULT = "down_task_freesolv_v2"
 PAIR_DIM_DEFAULT = 64
 RESULTS_PATH = "freesolv_v2t5_results.json"
+
+
+def describe_pair_source(data_root, pair_dim):
+    """Infer pair_repr provenance from the dataset root, not just feature width."""
+    normalized = os.path.normpath(data_root)
+    root_name = os.path.basename(normalized)
+
+    if root_name == "down_task_freesolv_v2":
+        return {
+            "pair_source": "RDKit 3D + GBF expansion (64-dim, max_dist=10A, sigma=0.5)",
+            "exp_suffix": "GBF pair_repr",
+        }
+    if root_name == "down_task_freesolv_unimol_v2":
+        return {
+            "pair_source": f"Uni-Mol encoder_pair_rep ({pair_dim}-dim)",
+            "exp_suffix": "Uni-Mol pair_repr",
+        }
+    return {
+        "pair_source": f"Unknown pair source (data_root={data_root}, pair_dim={pair_dim})",
+        "exp_suffix": f"pair_repr from {root_name}",
+    }
 
 
 def load_freesolv_split(root, split, seed=9):
@@ -107,10 +128,14 @@ def run_one_seed(pretrain_seed, device, t7=False, data_root=DATA_ROOT_DEFAULT,
     t7_gate_final = None
     if t7:
         try:
-            prop1 = model.prop1
-            if hasattr(prop1, "attn_gate"):
-                t7_gate_final = torch.sigmoid(prop1.attn_gate.detach()).tolist()
+            # LH_Direct_V2 nests prop1 inside encoder; pair_attn holds the per-head gate.
+            root = getattr(model, "encoder", model)
+            pair_attn = getattr(getattr(root, "prop1", None), "pair_attn", None) if hasattr(root, "prop1") else None
+            if pair_attn is not None and hasattr(pair_attn, "attn_gate"):
+                t7_gate_final = torch.sigmoid(pair_attn.attn_gate.detach()).tolist()
                 print(f"  [t7-gate] final per-head sigmoid(gate): {[round(g, 6) for g in t7_gate_final]}")
+            else:
+                print("  [t7-gate] pair_attn or attn_gate not found")
         except Exception as e:
             print(f"  [t7-gate] failed to read attn_gate: {e}")
 
@@ -216,7 +241,7 @@ if __name__ == "__main__":
     parser.add_argument("--data-root", type=str, default=DATA_ROOT_DEFAULT,
                         help="Root dir containing processed/freesolv_{train,valid,test,all}.pt")
     parser.add_argument("--pair-dim", type=int, default=PAIR_DIM_DEFAULT,
-                        help="pair_repr_edge feature dim (64 for GBF, 512 for Uni-Mol).")
+                        help="pair_repr_edge feature dim recorded in the processed dataset.")
     args = parser.parse_args()
 
     device = f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu"
@@ -233,25 +258,25 @@ if __name__ == "__main__":
 
     seeds = [args.seed] if args.seed is not None else [9, 19, 29]
 
-    if args.pair_dim == 64:
-        pair_source = "RDKit 3D + GBF expansion (64-dim, max_dist=10A, sigma=0.5)"
-        exp_suffix = "GBF pair_repr"
-    else:
-        pair_source = f"Uni-Mol encoder_pair_rep ({args.pair_dim}-dim)"
-        exp_suffix = "Uni-Mol pair_repr"
+    pair_meta = describe_pair_source(args.data_root, args.pair_dim)
+    pair_source = pair_meta["pair_source"]
+    exp_suffix = pair_meta["exp_suffix"]
 
     if os.path.exists(results_path):
         with open(results_path) as f:
             all_results = json.load(f)
     else:
         all_results = {
-            "experiment": f"FreeSolv {variant_label} (LH_Direct_V2 + {exp_suffix})",
-            "data_root": args.data_root,
-            "metric": "RMSE (lower is better)",
-            "pair_repr_source": pair_source,
-            "pair_dim": args.pair_dim,
             "results_per_seed": {},
         }
+
+    # Refresh top-level metadata even when reusing an existing per-seed JSON.
+    all_results["experiment"] = f"FreeSolv {variant_label} (LH_Direct_V2 + {exp_suffix})"
+    all_results["data_root"] = args.data_root
+    all_results["metric"] = "RMSE (lower is better)"
+    all_results["pair_repr_source"] = pair_source
+    all_results["pair_dim"] = args.pair_dim
+    all_results.setdefault("results_per_seed", {})
 
     for seed in seeds:
         key = f"seed_{seed}"

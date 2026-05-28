@@ -1,0 +1,65 @@
+{
+  "experiment": "FreeSolv T7 (LH_Direct_V2 + GBF pair_repr + pair-biased attention)",
+  "data_root": "down_task_freesolv_v2",
+  "metric": "RMSE (lower is better)",
+  "results_per_seed": {
+    "seed_9": {
+      "pretrain_seed": 9,
+      "pretrain_best_epoch": 915,
+      "pretrain_final_loss": 16.213335,
+      "bias_init": 5.0,
+      "bias_final": 4.7295,
+      "best_eval_epoch": 1863,
+      "best_val_rmse": 0.6333,
+      "best_test_rmse": 0.668,
+      "t7_gate_final": [
+        0.123509,
+        0.123217,
+        0.12315,
+        0.123057
+      ]
+    },
+    "seed_19": {
+      "pretrain_seed": 19,
+      "pretrain_best_epoch": 993,
+      "pretrain_final_loss": 16.213442,
+      "bias_init": 5.0,
+      "bias_final": 4.7333,
+      "best_eval_epoch": 1827,
+      "best_val_rmse": 0.5451,
+      "best_test_rmse": 0.6279,
+      "t7_gate_final": [
+        0.122765,
+        0.12324,
+        0.123068,
+        0.122922
+      ]
+    },
+    "seed_29": {
+      "pretrain_seed": 29,
+      "pretrain_best_epoch": 689,
+      "pretrain_final_loss": 16.213538,
+      "bias_init": 5.0,
+      "bias_final": 4.7649,
+      "best_eval_epoch": 1886,
+      "best_val_rmse": 0.7917,
+      "best_test_rmse": 0.7648,
+      "t7_gate_final": [
+        0.123435,
+        0.121925,
+        0.122647,
+        0.122907
+      ]
+    }
+  },
+  "summary": {
+    "all_test_rmses": [
+      0.668,
+      0.6279,
+      0.7648
+    ],
+    "mean_rmse": 0.6869,
+    "std_rmse": 0.0704
+  },
+  "pair_repr_source": "RDKit 3D + GBF expansion (64-dim, max_dist=10A, sigma=0.5)"
+}

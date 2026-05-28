@@ -129,6 +129,11 @@ class ChebnetII_prop_V2(MessagePassing):
     @staticmethod
     def _edge_weight_stats(edge_weight):
         edge_weight = edge_weight.detach()
+        if edge_weight.numel() == 0:
+            return {
+                "mean": 0.0, "std": 0.0, "min": 0.0, "max": 0.0,
+                "finite": True, "shape": tuple(edge_weight.shape),
+            }
         return {
             "mean": float(edge_weight.mean().item()),
             "std": float(edge_weight.std().item()) if edge_weight.numel() > 1 else 0.0,

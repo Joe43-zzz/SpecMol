@@ -7,7 +7,15 @@ set -euo pipefail
 
 SEED="${1:?Usage: sbatch hpc/run_freesolv_v2t5.sbatch SEED}"
 ENV_NAME="${ENV_NAME:-specmol}"
-RESULTS_PATH="${RESULTS_PATH:-hpc/results/freesolv_v2t5_seed${SEED}.json}"
+USE_T7="${USE_T7:-0}"
+if [ "$USE_T7" = "1" ]; then
+  VARIANT_TAG="t7"
+  T7_FLAG="--t7"
+else
+  VARIANT_TAG="v2t5"
+  T7_FLAG=""
+fi
+RESULTS_PATH="${RESULTS_PATH:-hpc/results/freesolv_${VARIANT_TAG}_seed${SEED}.json}"
 
 mkdir -p hpc/logs hpc/results pkl results
 
@@ -29,12 +37,14 @@ conda activate "$ENV_NAME"
 echo "JOB_ID=${SLURM_JOB_ID:-none}"
 echo "HOST=$(hostname)"
 echo "TASK=freesolv"
-echo "VARIANT=v2t5"
+echo "VARIANT=$VARIANT_TAG"
 echo "SEED=$SEED"
 echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset}"
 echo "RESULTS_PATH=$RESULTS_PATH"
+echo "USE_T7=$USE_T7"
 
 python run_freesolv_v2t5.py \
   --seed "$SEED" \
   --gpu 0 \
-  --results-path "$RESULTS_PATH"
+  --results-path "$RESULTS_PATH" \
+  $T7_FLAG

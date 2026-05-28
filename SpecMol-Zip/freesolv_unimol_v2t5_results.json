@@ -1,0 +1,29 @@
+{
+  "experiment": "FreeSolv V2-T5 (LH_Direct_V2 + Uni-Mol pair_repr)",
+  "data_root": "down_task_freesolv_unimol_v2",
+  "metric": "RMSE (lower is better)",
+  "results_per_seed": {
+    "seed_9": {
+      "pretrain_seed": 9,
+      "best_test_rmse": 0.6412
+    },
+    "seed_19": {
+      "pretrain_seed": 19,
+      "best_test_rmse": 0.6529
+    },
+    "seed_29": {
+      "pretrain_seed": 29,
+      "best_test_rmse": 0.619
+    }
+  },
+  "summary": {
+    "all_test_rmses": [
+      0.6412,
+      0.6529,
+      0.619
+    ],
+    "mean_rmse": 0.6377,
+    "std_rmse": 0.0172
+  },
+  "pair_repr_source": "Uni-Mol encoder_pair_rep (64-dim)"
+}

@@ -1,0 +1,89 @@
+{
+  "task": "bace",
+  "experiment": "BACE V0/V2-T5/T6 Comparison (Uni-Mol fold split)",
+  "eval_seeds": [
+    9,
+    19,
+    29
+  ],
+  "metric_name": "auc",
+  "variants": {
+    "t7": {
+      "results_per_seed": {
+        "seed_29": {
+          "pretrain_best_epoch": 954,
+          "pretrain_final_loss": 18.6656,
+          "early_stopped": false,
+          "eval_splits": {
+            "split_9": {
+              "test_metric": 0.7454545454545455,
+              "best_eval_epoch": 235
+            },
+            "split_19": {
+              "test_metric": 0.7605194805194806,
+              "best_eval_epoch": 244
+            },
+            "split_29": {
+              "test_metric": 0.7653679653679655,
+              "best_eval_epoch": 223
+            }
+          },
+          "mean_test_metric": 0.7571,
+          "std_test_metric": 0.0085
+        },
+        "seed_19": {
+          "pretrain_best_epoch": 991,
+          "pretrain_final_loss": 18.6656,
+          "early_stopped": false,
+          "eval_splits": {
+            "split_9": {
+              "test_metric": 0.775064935064935,
+              "best_eval_epoch": 415
+            },
+            "split_19": {
+              "test_metric": 0.7627705627705628,
+              "best_eval_epoch": 400
+            },
+            "split_29": {
+              "test_metric": 0.7802597402597403,
+              "best_eval_epoch": 451
+            }
+          },
+          "mean_test_metric": 0.7727,
+          "std_test_metric": 0.0073
+        },
+        "seed_9": {
+          "pretrain_best_epoch": 985,
+          "pretrain_final_loss": 18.6656,
+          "early_stopped": false,
+          "eval_splits": {
+            "split_9": {
+              "test_metric": 0.8232034632034632,
+              "best_eval_epoch": 483
+            },
+            "split_19": {
+              "test_metric": 0.7968831168831169,
+              "best_eval_epoch": 400
+            },
+            "split_29": {
+              "test_metric": 0.8112554112554112,
+              "best_eval_epoch": 451
+            }
+          },
+          "mean_test_metric": 0.8104,
+          "std_test_metric": 0.0108
+        }
+      },
+      "summary": {
+        "grand_mean": 0.7801,
+        "grand_std": 0.0241,
+        "n_metrics": 9,
+        "per_seed_means": [
+          0.7571,
+          0.7727,
+          0.8104
+        ]
+      }
+    }
+  }
+}
