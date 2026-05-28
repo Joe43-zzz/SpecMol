@@ -2,6 +2,8 @@
 #SBATCH --job-name=freesolv_unimol
 #SBATCH --output=hpc/logs/%x_%j.out
 #SBATCH --error=hpc/logs/%x_%j.err
+#SBATCH --partition=cscc-gpu-p
+#SBATCH --qos=cscc-gpu-qos
 #SBATCH --time=08:00:00
 #SBATCH --mem=48G
 #SBATCH --gres=gpu:1
