@@ -75,6 +75,16 @@ def main():
     df_raw.to_csv(csv_for_unimol, index=False)
     print(f"Saved {len(df_raw)} rows to {csv_for_unimol}")
 
+    # Multi-label tasks (clintox/tox21/sider) trip unimol_tools' internal
+    # StratifiedKFold splitter (sklearn flattens 2D y to (n*k,) which then
+    # mismatches X length). Scaffold split itself only needs the SMILES;
+    # the label is just along for the ride. So for multi-label we hand
+    # DataHub a single representative label column for the split, then
+    # save the full multi-label df_raw with fold IDs ourselves below.
+    split_target_cols = (
+        [target_cols[0]] if task in MULTI_LABEL_TASKS else target_cols
+    )
+
     # Run DataHub: generates 3D conformers + scaffold split
     sdf_save_path = str(output_root / "sdf")
     hub = DataHub(
@@ -84,7 +94,7 @@ def main():
         task="classification",
         data_type="molecule",
         smiles_col="smiles",
-        target_cols=target_cols,
+        target_cols=split_target_cols,
         split="scaffold",
         kfold=args.kfold,
         split_seed=args.split_seed,

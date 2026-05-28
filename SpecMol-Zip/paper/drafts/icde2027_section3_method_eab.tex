@@ -1,0 +1,141 @@
+% DRAFT §3 Method for ICDE 2027 R1 EAB submission.
+% Replaces current main.tex §3 (lines 63-110). Key changes from current:
+%   1. V2-T5 / T6 reframed as "subjects of study" not "we propose"
+%   2. T7 promoted from descriptive paragraph in §4.2 to a §3.5 subsection
+%   3. NEW §3.5 Featurization control (B4 audit description)
+%   4. §3 trimmed by ~0.5 page to make room for T7 + B4 sections + 4 new datasets in §4
+
+\section{Method}
+\label{sec:method}
+
+\subsection{Notation and Backbone}
+\label{sec:notation}
+Let $G=(\mathcal{V},\mathcal{E})$ be a molecular graph with $N=|\mathcal{V}|$
+heavy atoms and chemical bonds $\mathcal{E}\subseteq\mathcal{V}\times\mathcal{V}$.
+Each atom carries feature vector $\mathbf{x}_i\in\mathbb{R}^{d_x}$;
+each bond an edge attribute $\mathbf{e}_{ij}\in\mathbb{R}^{d_e}$. We also
+consume a frozen pair representation
+$\mathbf{P}\in\mathbb{R}^{N\times N\times d_p}$ produced by a pretrained
+Uni-Mol encoder~\cite{zhou2023unimol}, indexed over all atom pairs. The
+chemical-bond adjacency $A\in\{0,1\}^{N\times N}$ is symmetric---each bond
+contributes both directed edges $(i,j)$ and $(j,i)$, see
+\S\ref{sec:featurization-control}---and induces the symmetric normalized
+Laplacian $L_{\mathrm{sym}}=I-D^{-1/2}AD^{-1/2}$.
+
+Our backbone, \texttt{LH\_Direct}, processes $G$ along two parallel
+spectral paths and fuses them with a molecular fingerprint stream. Each
+spectral path is a Chebyshev~II encoder~\cite{he2022chebnetii} applying an
+order-$K$ polynomial filter,
+\begin{equation}
+    h^{(\ell)} = \sum_{k=0}^{K} \theta_k\, T_k(\tilde L)\, h^{(\ell-1)},
+    \qquad \tilde L = 2L_{\mathrm{sym}}/\lambda_{\max} - I,
+    \label{eq:chebnetii}
+\end{equation}
+with $\lambda_{\max}{=}2$ fixed. The two paths use independent coefficients
+tuned, by construction, towards low-pass and high-pass behavior. The pooled
+graph representations $h_l, h_h$ are concatenated with a fingerprint
+embedding $h_{\mathrm{fp}}=\mathrm{MLP}(\mathrm{FP}(G))$, where $\mathrm{FP}$
+concatenates PubChem, MACCS, and ErG fingerprints into a $1489$-dim vector.
+The fused $z = [h_l; h_h; h_{\mathrm{fp}}]$ is the only object exposed to the
+downstream linear probe head.
+
+\subsection{V0: Two-Dimensional Baseline}
+\label{sec:v0}
+V0 runs \texttt{LH\_Direct} with $A$ unchanged, i.e.\ all bonds carry equal
+Laplacian weight, and ignores $\mathbf{P}$ entirely. V0 is the strict
+two-dimensional reference.
+
+\subsection{Three Pair-Injection Mechanisms (Subjects of Study)}
+\label{sec:subjects}
+We study three independently motivated paths for feeding $\mathbf{P}$ into
+the spectral filter. They share the same backbone, same pretraining
+objective, same downstream probe, and same hyperparameters; they differ
+only in how $\mathbf{P}$ enters.
+
+\paragraph{V2-T5: static bond-level gating.}
+\label{sec:v2t5}
+For each bond $(i,j)\in\mathcal{E}$ we form
+\begin{equation}
+    g_{ij} = \sigma\!\left( \tfrac{1}{2}\bigl(\mathrm{MLP}_\phi(\mathbf{P}_{ij}) + \mathrm{MLP}_\phi(\mathbf{P}_{ji})\bigr) + b \right),
+    \label{eq:v2t5gate}
+\end{equation}
+where $\mathrm{MLP}_\phi$ is a shared two-layer scalar-output network, the
+symmetrization ensures $g_{ij}=g_{ji}$, and bias $b{=}{+}5$ yields an
+initial gate of $\sigma(5)\approx 0.993$. The reweighted Laplacian
+$L_{\mathrm{sym}}(g)$ replaces $L_{\mathrm{sym}}$ in
+Eq.~(\ref{eq:chebnetii}). The near-identity initialization preserves V0
+dynamics at epoch zero so the contrastive objective starts from a
+near-optimal point and is free to move $g_{ij}$ away from $1$ only when
+gradient signal justifies it.
+
+\paragraph{T6: iterative pair-node update.}
+\label{sec:t6}
+T6 trades the static gate for a bidirectional update at each Chebyshev
+layer. Given current node features $h^{(\ell)}$ and pair bias
+$\mathbf{P}^{(\ell)}$, a four-head two-layer attention block (residual
+scale $\alpha{=}0.1$) computes pair-biased attention,
+\begin{equation*}
+    \mathrm{Attn}(Q,K,V;\mathbf{P}^{(\ell)}) = \mathrm{softmax}\!\bigl(QK^\top/\sqrt{d_h} + \mathbf{P}^{(\ell)}\bigr)\,V,
+\end{equation*}
+producing $h^{(\ell+1)}$ via the residual-LayerNorm wrapper. The
+pre-softmax logits also produce a pair residual
+$\Delta\mathbf{P}^{(\ell)} = \mathrm{HeadMix}(QK^\top/\sqrt{d_h})$ that is
+added to the pair bias with the small residual scale $\alpha$,
+$\mathbf{P}^{(\ell+1)} = \mathrm{LN}(\mathbf{P}^{(\ell)} + \alpha\,\Delta\mathbf{P}^{(\ell)})$.
+The updated pair bias is then projected to edge gates via the
+Eq.~(\ref{eq:v2t5gate}) machinery. At initialization T6 reduces to V2-T5;
+the small $\alpha$ keeps it close to near-identity-residual but with
+additional capacity to update both representations as training proceeds.
+
+\paragraph{T7: pair-biased multi-head attention with per-head gating.}
+\label{sec:t7}
+T7 stacks a four-head attention block on top of V2-T5 with a per-head
+sigmoid gate. Following ReZero~\cite{bachlechner2021rezero} and
+LayerScale~\cite{touvron2021cait}, each head's contribution is
+multiplied by $\sigma(\gamma_h)$ before the residual sum, where
+$\gamma_h\in\mathbb{R}$ is a learnable scalar initialized to $-2$
+($\sigma({-}2)\approx 0.119$). T7 is the only subject with explicitly
+gated attention output, so its closed-gate dynamics are directly
+observable from the trained $\sigma(\gamma_h)$ histogram---see
+\S\ref{sec:experiments} for the empirical reading.
+
+\subsection{Featurization Control}
+\label{sec:featurization-control}
+The symmetric normalized Laplacian in \S\ref{sec:notation} requires both
+directed edges $(i,j)$ and $(j,i)$ to exist for every chemical bond, since
+\texttt{get\_laplacian} with the \texttt{sym} option computes the row
+degree by scattering over the edge list. Our codebase
+(\texttt{create\_data\_DC.py:get\_edge\_features}) inherited an
+edge-construction pattern from a popular GraphDTA-derived
+loader~\cite{nguyen2021graphdta} that originally appended only the
+$(i,j)$ direction and relied on a downstream
+\texttt{networkx.Graph.to\_directed()} call to bidirectionalize. Our fork
+silently dropped the NetworkX step; the resulting bond list is
+unidirectional and roughly $19\%$ of heavy atoms on BBBP,
+$18\%$ on BACE, and $24\%$ on FreeSolv received row-out-degree zero
+under the symmetric Laplacian, isolating them from spectral message
+passing. Top zeroed atomic symbols across all three benchmarks are
+O, C, Cl, F, N---the chain terminals---confirming that the loss falls on
+the heteroatom-rich periphery rather than the carbon scaffold.
+
+All numbers reported in this paper use the corrected, end-to-end
+bidirectional bond list. We audit fourteen widely cited public molecular
+GNN repositories for the same vulnerability and document where it is and
+is not present in \S\ref{sec:experiments}. The audit script
+(\texttt{paper/audit\_b4\_atom\_dropout.py}) reproduces the per-dataset
+dropout fractions in under a minute and is released as part of our
+reproducibility artifact.
+
+\subsection{Training and Downstream Evaluation Protocol}
+\label{sec:training}
+All variants are pretrained with a four-view NT-Xent contrastive
+objective over low-pass, high-pass, mixed, and fingerprint embeddings
+(temperature $\tau{=}0.5$, batch size $512$, early-stopping on training
+loss with patience $100$, max $1000$ epochs). After pretraining the
+encoder is frozen and a two-layer logistic regression head (single Dropout
+$p{=}0.2$ during training, disabled at evaluation) is trained on the fused
+representation. For each pretraining seed we run three downstream
+evaluation restarts (probe-init seeds $\{9,19,29\}$) and report the
+test metric at the validation-best epoch with a $200$-epoch warm-up and
+strict improvement tolerance of $10^{-4}$ to avoid early-epoch noise
+selection.
