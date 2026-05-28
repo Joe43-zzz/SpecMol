@@ -236,18 +236,30 @@ def parse_chemprop_output(stdout, save_dir, metric_key):
 
 
 def _find_chemprop_train():
-    """Locate the chemprop_train entry-point alongside the current Python.
+    """Locate the chemprop_train entry-point.
 
-    On Windows it lives at <venv>/Scripts/chemprop_train.exe; on POSIX at
-    <venv>/bin/chemprop_train. Resolves once at runtime and caches.
+    Search order:
+      1. Alongside the active Python (Windows: <venv>/Scripts; POSIX: <venv>/bin)
+      2. PATH (shutil.which) -- covers `pip install --user` installs on HPC
+         where chemprop_train lands in ~/.local/bin/.
     """
+    import shutil
     py = Path(sys.executable)
     bindir = py.parent
     for cand in (bindir / "chemprop_train.exe", bindir / "chemprop_train"):
         if cand.exists():
             return str(cand)
-    raise FileNotFoundError("chemprop_train entry-point not found next to "
-                            f"{py}; is chemprop installed in this env?")
+    path_hit = shutil.which("chemprop_train") or shutil.which("chemprop_train.exe")
+    if path_hit:
+        return path_hit
+    # Last-ditch: ~/.local/bin/chemprop_train (common pip --user location)
+    user_local = Path.home() / ".local" / "bin" / "chemprop_train"
+    if user_local.exists():
+        return str(user_local)
+    raise FileNotFoundError(
+        f"chemprop_train entry-point not found. Tried {bindir}, PATH, and "
+        f"~/.local/bin. Is chemprop installed in this env?"
+    )
 
 
 CHEMPROP_TRAIN = _find_chemprop_train()
