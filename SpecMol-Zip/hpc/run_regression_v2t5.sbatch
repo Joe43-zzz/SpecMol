@@ -25,12 +25,16 @@ TASK="${TASK:?TASK env var required: esol | lipo | freesolv}"
 SEED="${1:?Usage: TASK=<esol|lipo|freesolv> sbatch hpc/run_regression_v2t5.sbatch SEED}"
 ENV_NAME="${ENV_NAME:-specmol}"
 USE_T7="${USE_T7:-0}"
+USE_T6="${USE_T6:-0}"
 if [ "$USE_T7" = "1" ]; then
   VARIANT_TAG="t7"
-  T7_FLAG="--t7"
+  VARIANT_FLAG="--t7"
+elif [ "$USE_T6" = "1" ]; then
+  VARIANT_TAG="t6"
+  VARIANT_FLAG="--t6"
 else
   VARIANT_TAG="v2t5"
-  T7_FLAG=""
+  VARIANT_FLAG=""
 fi
 PAIR_DIM="${PAIR_DIM:-64}"
 DATA_ROOT="${DATA_ROOT:-down_task_${TASK}_unimol_v2}"
@@ -75,4 +79,4 @@ python run_regression_v2t5.py \
   --data-root "$DATA_ROOT" \
   --pair-dim "$PAIR_DIM" \
   --results-path "$RESULTS_PATH" \
-  $T7_FLAG
+  $VARIANT_FLAG

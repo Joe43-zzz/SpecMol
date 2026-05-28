@@ -62,8 +62,10 @@ def load_task_split(root, task, split):
     return load_pyg_inmemory_split(root, task, split)
 
 
-def run_one_seed(task, pretrain_seed, device, t7=False, data_root=None,
+def run_one_seed(task, pretrain_seed, device, t7=False, t6=False, data_root=None,
                  pair_dim=PAIR_DIM_DEFAULT):
+    if t7 and t6:
+        raise ValueError("t6 and t7 are mutually exclusive")
     set_seed(pretrain_seed)
 
     if data_root is None:
@@ -79,7 +81,12 @@ def run_one_seed(task, pretrain_seed, device, t7=False, data_root=None,
     fp_type = "tri"
     alpha = 1
 
-    variant_tag = "T7" if t7 else "V2-T5"
+    if t7:
+        variant_tag = "T7"
+    elif t6:
+        variant_tag = "T6"
+    else:
+        variant_tag = "V2-T5"
     print(f"\n{'='*60}")
     print(f"{variant_tag} PRETRAIN task={task} seed={pretrain_seed} "
           f"data_root={data_root} pair_dim={pair_dim}")
@@ -89,6 +96,7 @@ def run_one_seed(task, pretrain_seed, device, t7=False, data_root=None,
     model = LH_Direct_V2(
         in_dim=93, hid_dim=hid_dim, K=K, dprate=0.5, dropout=0.0,
         is_bns=False, act_fn="relu", type=fp_type, pair_dim=pair_dim,
+        t6=t6,
         t7=t7, t7_num_heads=4, t7_head_dim=32, t7_dropout=0.0, t7_init_std=0.02,
     ).to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-7)
@@ -246,6 +254,8 @@ if __name__ == "__main__":
                         help="Output JSON path. Defaults to {task}_{variant}_results.json")
     parser.add_argument("--t7", action="store_true",
                         help="Use T7 variant (V2-T5 + pair-biased attention with per-head gates).")
+    parser.add_argument("--t6", action="store_true",
+                        help="Use T6 variant (V2-T5 + iterative pair-node update).")
     parser.add_argument("--data-root", type=str, default=None,
                         help="Root dir containing processed/{task}_{train,valid,test,all}.pt. "
                              "Defaults to down_task_{task}_unimol_v2.")
@@ -259,11 +269,18 @@ if __name__ == "__main__":
     task = args.task
     data_root = args.data_root or default_data_root(task)
 
-    variant_label = "T7" if args.t7 else "V2-T5"
+    if args.t7:
+        variant_label = "T7"
+    elif args.t6:
+        variant_label = "T6"
+    else:
+        variant_label = "V2-T5"
     if args.results_path:
         results_path = args.results_path
     elif args.t7:
         results_path = f"{task}_t7_bare_results.json"
+    elif args.t6:
+        results_path = f"{task}_t6_results.json"
     else:
         results_path = f"{task}_v2t5_results.json"
     results_dir = os.path.dirname(results_path)
@@ -293,7 +310,8 @@ if __name__ == "__main__":
     rmses = []
     for s in seeds:
         result = run_one_seed(
-            task=task, pretrain_seed=s, device=device, t7=args.t7,
+            task=task, pretrain_seed=s, device=device,
+            t7=args.t7, t6=args.t6,
             data_root=data_root, pair_dim=args.pair_dim,
         )
         all_results["results_per_seed"][f"seed_{s}"] = result
