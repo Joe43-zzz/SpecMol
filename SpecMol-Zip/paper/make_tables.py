@@ -251,7 +251,7 @@ def render_cls_table(bbbp: dict, bace: dict,
     Includes ClinTox/Tox21 columns when data is present; falls back to the
     original 2-column layout otherwise.
     """
-    variants = ["V0", "FP-only", "RF", "Chemprop", "V2-T5", "T7"]
+    variants = ["V0", "FP-only", "RF", "Chemprop", "Uni-Mol", "V2-T5", "T7"]
     clintox = clintox or {}
     tox21 = tox21 or {}
     has_ctox = bool(clintox)
@@ -306,7 +306,7 @@ def render_reg_table(freesolv: dict,
 
     Includes ESOL/Lipo columns when data is present; FreeSolv-only otherwise.
     """
-    variants = ["V0", "RF", "Chemprop", "V2-T5", "T7"]
+    variants = ["V0", "RF", "Chemprop", "Uni-Mol", "V2-T5", "T7"]
     esol = esol or {}
     lipo = lipo or {}
     has_esol = bool(esol)
@@ -390,6 +390,27 @@ def parse_chemprop_unimol_fold(data: dict) -> dict[str, tuple[float, float]]:
     return out
 
 
+def parse_matched_baselines(data: dict) -> tuple[dict, dict]:
+    """Parse baselines_matched_results.json -> (rf_matched, unimol) dicts.
+
+    Schema: {dataset: {"morgan_rdkit": {mean:{...}, std:{...}}, "unimol": {...}}}.
+    Both produced by baselines_matched.py on the model's *exact* split, so the
+    'morgan_rdkit' RF here supersedes the deng30 RF for datasets whose deng30
+    cell was computed on a regenerated (unmatched) split. The 'unimol' feature
+    is the frozen-Uni-Mol-embedding + RF control. Uses rmse for regression,
+    roc_auc (macro for multi-label) for classification.
+    """
+    rf_out: dict[str, tuple[float, float]] = {}
+    unimol_out: dict[str, tuple[float, float]] = {}
+    for ds, feats in data.items():
+        metric = "rmse" if ds in REGRESSION_DS else "roc_auc"
+        for feat, dst in (("morgan_rdkit", rf_out), ("unimol", unimol_out)):
+            blk = feats.get(feat) if isinstance(feats, dict) else None
+            if blk and "mean" in blk and metric in blk["mean"]:
+                dst[ds] = (blk["mean"][metric], blk["std"].get(metric, 0.0))
+    return rf_out, unimol_out
+
+
 def render_main_table(bbbp: dict, bace: dict, freesolv: dict) -> str:
     variants = ["V0", "FP-only", "RF", "Chemprop", "V2-T5", "T6", "T7"]
     lines = [
@@ -465,6 +486,19 @@ def main() -> None:
                               ("freesolv", freesolv), ("esol", esol), ("lipo", lipo)):
             if ds_key in cp:
                 table["Chemprop"] = cp[ds_key]
+
+    # Matched-split baselines (baselines_matched.py): matched RF overrides the
+    # deng30 RF cell, and the frozen-Uni-Mol-embedding control adds a Uni-Mol row.
+    matched_raw = load("baselines_matched_results.json")
+    if matched_raw:
+        rf_m, unimol_m = parse_matched_baselines(matched_raw)
+        for ds_key, table in (("bbbp", bbbp), ("bace", bace),
+                              ("clintox", clintox),
+                              ("freesolv", freesolv), ("esol", esol), ("lipo", lipo)):
+            if ds_key in rf_m:
+                table["RF"] = rf_m[ds_key]
+            if ds_key in unimol_m:
+                table["Uni-Mol"] = unimol_m[ds_key]
 
     # Bare-T7 (HPC collector output, separate file per task).
     for table, json_name in (
