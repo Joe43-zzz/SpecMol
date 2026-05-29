@@ -284,6 +284,14 @@ def fit_eval(X_tr, y_tr, X_te, y_te, task, seed):
                 per_task_pr_auc.append(float(average_precision_score(y_te_t, proba)))
             per_task_f1.append(float(f1_score(y_te_t, pred, zero_division=0)))
         macro = lambda xs: float(np.nanmean(xs)) if any(not np.isnan(v) for v in xs) else float("nan")
+        # A degenerate (single-class) task in this train/test fold yields NaN and
+        # is silently dropped by nanmean; warn + record the count so a macro-AUC
+        # averaged over fewer than n_tasks tasks (e.g. ClinTox's rare CT_TOX) is
+        # not mistaken for a full macro average.
+        n_valid_roc = int(sum(not np.isnan(v) for v in per_task_roc_auc))
+        if n_valid_roc < n_tasks:
+            print(f"[multilabel] WARNING: macro roc_auc averaged over {n_valid_roc}/{n_tasks} "
+                  f"tasks; the rest were single-class in this fold")
         # Use roc_auc as the single number convention so downstream consumers
         # (paper/make_tables.py) work without special-casing.
         return {
@@ -294,6 +302,7 @@ def fit_eval(X_tr, y_tr, X_te, y_te, task, seed):
             "per_task_pr_auc": per_task_pr_auc,
             "per_task_f1": per_task_f1,
             "n_tasks": n_tasks,
+            "n_valid_roc_tasks": n_valid_roc,
         }
     if task == "classification":
         clf = RandomForestClassifier(

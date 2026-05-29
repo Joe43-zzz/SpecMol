@@ -96,7 +96,14 @@ def featurize_unimol(smiles):
     X = np.asarray(cls, dtype=np.float32)
     if X.shape[0] != len(smiles):
         raise RuntimeError(f"UniMolRepr returned {X.shape[0]} rows for {len(smiles)} SMILES")
-    return X, np.ones(len(smiles), dtype=bool)
+    # Guard: failed/garbage conformers can yield non-finite embeddings. Drop
+    # those rows (the run() caller realigns y/splits via the returned ok mask)
+    # rather than silently feeding NaNs into RandomForest.
+    ok = np.isfinite(X).all(axis=1)
+    if not ok.all():
+        print(f"[unimol] WARNING: dropping {int((~ok).sum())}/{len(smiles)} "
+              f"molecules with non-finite embeddings (failed conformers)")
+    return X[ok], ok
 
 
 FEATURIZERS = {"morgan_rdkit": featurize_morgan_rdkit, "unimol": featurize_unimol}
