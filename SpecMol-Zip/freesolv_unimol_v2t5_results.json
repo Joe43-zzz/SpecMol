@@ -1,18 +1,38 @@
 {
-  "experiment": "FreeSolv V2-T5 (LH_Direct_V2 + Uni-Mol pair_repr)",
+  "task": "freesolv",
+  "variant": "v2t5",
+  "experiment": "FREESOLV V2-T5 (LH_Direct_V2 + Uni-Mol pair_repr static gate)",
   "data_root": "down_task_freesolv_unimol_v2",
   "metric": "RMSE (lower is better)",
   "results_per_seed": {
     "seed_9": {
       "pretrain_seed": 9,
+      "pretrain_best_epoch": 960,
+      "pretrain_final_loss": 16.214204,
+      "bias_init": 5.0,
+      "bias_final": 4.9301,
+      "best_eval_epoch": 1643,
+      "best_val_rmse": 0.5307,
       "best_test_rmse": 0.6412
     },
     "seed_19": {
       "pretrain_seed": 19,
+      "pretrain_best_epoch": 665,
+      "pretrain_final_loss": 16.214305,
+      "bias_init": 5.0,
+      "bias_final": 4.9505,
+      "best_eval_epoch": 1865,
+      "best_val_rmse": 0.8292,
       "best_test_rmse": 0.6529
     },
     "seed_29": {
       "pretrain_seed": 29,
+      "pretrain_best_epoch": 429,
+      "pretrain_final_loss": 16.214432,
+      "bias_init": 5.0,
+      "bias_final": 4.9254,
+      "best_eval_epoch": 1742,
+      "best_val_rmse": 0.695,
       "best_test_rmse": 0.619
     }
   },
@@ -23,7 +43,7 @@
       0.619
     ],
     "mean_rmse": 0.6377,
-    "std_rmse": 0.0172
-  },
-  "pair_repr_source": "Uni-Mol encoder_pair_rep (64-dim)"
+    "std_rmse": 0.0172,
+    "n_seeds": 3
+  }
 }

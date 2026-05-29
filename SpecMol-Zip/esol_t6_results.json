@@ -1,0 +1,49 @@
+{
+  "task": "esol",
+  "variant": "t6",
+  "experiment": "ESOL T6 (LH_Direct_V2 dynamic pair-node update + Uni-Mol pair_repr)",
+  "data_root": "down_task_esol_unimol_v2",
+  "metric": "RMSE (lower is better)",
+  "results_per_seed": {
+    "seed_9": {
+      "pretrain_seed": 9,
+      "pretrain_best_epoch": 977,
+      "pretrain_final_loss": 16.376695,
+      "bias_init": 5.0,
+      "bias_final": 4.8984,
+      "best_eval_epoch": 1968,
+      "best_val_rmse": 0.632,
+      "best_test_rmse": 0.8187
+    },
+    "seed_19": {
+      "pretrain_seed": 19,
+      "pretrain_best_epoch": 385,
+      "pretrain_final_loss": 16.376978,
+      "bias_init": 5.0,
+      "bias_final": 4.9265,
+      "best_eval_epoch": 1774,
+      "best_val_rmse": 0.677,
+      "best_test_rmse": 0.9248
+    },
+    "seed_29": {
+      "pretrain_seed": 29,
+      "pretrain_best_epoch": 510,
+      "pretrain_final_loss": 16.376935,
+      "bias_init": 5.0,
+      "bias_final": 4.9378,
+      "best_eval_epoch": 1729,
+      "best_val_rmse": 0.6557,
+      "best_test_rmse": 0.8412
+    }
+  },
+  "summary": {
+    "all_test_rmses": [
+      0.8187,
+      0.9248,
+      0.8412
+    ],
+    "mean_rmse": 0.8616,
+    "std_rmse": 0.0559,
+    "n_seeds": 3
+  }
+}

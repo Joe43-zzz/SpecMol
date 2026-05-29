@@ -1,0 +1,43 @@
+{
+  "task": "lipo",
+  "variant": "v0",
+  "experiment": "LIPO V0 (LH_Direct 2D baseline)",
+  "data_root": "down_task_lipo_unimol_v2",
+  "metric": "RMSE (lower is better)",
+  "results_per_seed": {
+    "seed_9": {
+      "pretrain_seed": 9,
+      "pretrain_best_epoch": 997,
+      "pretrain_final_loss": 16.558591,
+      "best_eval_epoch": 1981,
+      "best_val_rmse": 0.9519,
+      "best_test_rmse": 0.8765
+    },
+    "seed_19": {
+      "pretrain_seed": 19,
+      "pretrain_best_epoch": 964,
+      "pretrain_final_loss": 16.558591,
+      "best_eval_epoch": 1993,
+      "best_val_rmse": 0.9579,
+      "best_test_rmse": 0.8826
+    },
+    "seed_29": {
+      "pretrain_seed": 29,
+      "pretrain_best_epoch": 998,
+      "pretrain_final_loss": 16.558593,
+      "best_eval_epoch": 1989,
+      "best_val_rmse": 0.9494,
+      "best_test_rmse": 0.8738
+    }
+  },
+  "summary": {
+    "all_test_rmses": [
+      0.8765,
+      0.8826,
+      0.8738
+    ],
+    "mean_rmse": 0.8776,
+    "std_rmse": 0.0045,
+    "n_seeds": 3
+  }
+}

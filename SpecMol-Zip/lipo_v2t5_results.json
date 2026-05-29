@@ -1,0 +1,49 @@
+{
+  "task": "lipo",
+  "variant": "v2t5",
+  "experiment": "LIPO V2-T5 (LH_Direct_V2 + Uni-Mol pair_repr static gate)",
+  "data_root": "down_task_lipo_unimol_v2",
+  "metric": "RMSE (lower is better)",
+  "results_per_seed": {
+    "seed_9": {
+      "pretrain_seed": 9,
+      "pretrain_best_epoch": 996,
+      "pretrain_final_loss": 16.558577,
+      "bias_init": 5.0,
+      "bias_final": 4.4396,
+      "best_eval_epoch": 1968,
+      "best_val_rmse": 0.9722,
+      "best_test_rmse": 0.8779
+    },
+    "seed_19": {
+      "pretrain_seed": 19,
+      "pretrain_best_epoch": 999,
+      "pretrain_final_loss": 16.558575,
+      "bias_init": 5.0,
+      "bias_final": 4.5089,
+      "best_eval_epoch": 1978,
+      "best_val_rmse": 0.9649,
+      "best_test_rmse": 0.8668
+    },
+    "seed_29": {
+      "pretrain_seed": 29,
+      "pretrain_best_epoch": 992,
+      "pretrain_final_loss": 16.558576,
+      "bias_init": 5.0,
+      "bias_final": 4.4038,
+      "best_eval_epoch": 1984,
+      "best_val_rmse": 0.9764,
+      "best_test_rmse": 0.8881
+    }
+  },
+  "summary": {
+    "all_test_rmses": [
+      0.8779,
+      0.8668,
+      0.8881
+    ],
+    "mean_rmse": 0.8776,
+    "std_rmse": 0.0107,
+    "n_seeds": 3
+  }
+}

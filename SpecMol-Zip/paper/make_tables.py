@@ -214,6 +214,35 @@ def parse_freesolv(baseline: dict, v2: dict) -> dict[str, tuple[float, float]]:
     return out
 
 
+def parse_regression_matrix(task: str) -> dict[str, tuple[float, float]]:
+    """Build {variant_label: (mean, std)} for one regression task from the
+    per-variant aggregated JSONs produced by aggregate_regression_seeds.py.
+
+    Reads <task>_v0_results.json / <task>_t6_results.json /
+    <task>_t7_bare_results.json, plus the V2-T5 cell from
+    freesolv_unimol_v2t5_results.json (FreeSolv) or <task>_v2t5_results.json
+    (ESOL/Lipo). Each (mean, std) is recomputed from the per-seed
+    best_test_rmse values via _stats so the std convention matches every other
+    cell in the paper. Variants with no result file are simply omitted (the
+    table renders them as "--").
+    """
+    v2_name = ("freesolv_unimol_v2t5_results.json" if task == "freesolv"
+               else f"{task}_v2t5_results.json")
+    sources = [
+        ("V0", f"{task}_v0_results.json"),
+        ("V2-T5", v2_name),
+        ("T6", f"{task}_t6_results.json"),
+        ("T7", f"{task}_t7_bare_results.json"),
+    ]
+    out: dict[str, tuple[float, float]] = {}
+    for label, fname in sources:
+        block = load(fname)
+        seeds = _freesolv_per_seed(block) if block else []
+        if seeds:
+            out[label] = _stats(seeds)
+    return out
+
+
 def render_cls_table(bbbp: dict, bace: dict,
                      clintox: dict | None = None,
                      tox21: dict | None = None) -> str:
@@ -222,7 +251,7 @@ def render_cls_table(bbbp: dict, bace: dict,
     Includes ClinTox/Tox21 columns when data is present; falls back to the
     original 2-column layout otherwise.
     """
-    variants = ["V0", "FP-only", "RF", "Chemprop", "V2-T5", "T6", "T7"]
+    variants = ["V0", "FP-only", "RF", "Chemprop", "V2-T5", "T7"]
     clintox = clintox or {}
     tox21 = tox21 or {}
     has_ctox = bool(clintox)
@@ -403,10 +432,6 @@ def main() -> None:
     bace_full_raw = load("bace_all_results.json")  # post-B4
     clintox_full_raw = load("clintox_all_results.json")  # sprint addition
     tox21_full_raw = load("tox21_all_results.json")      # sprint addition
-    fs_base = load("freesolv_baseline_results.json")
-    fs_v2 = load("freesolv_unimol_v2t5_results.json") or load("freesolv_v2t5_results.json")
-    esol_v2 = load("esol_v2t5_results.json")              # sprint addition
-    lipo_v2 = load("lipo_v2t5_results.json")              # sprint addition
     # RF classical baseline: prefer 30-seed Deng2023 protocol, fall back to 5-seed.
     rf_raw = load("baselines_ml_results_deng30_unimol_fold.json") or \
              load("baselines_ml_results_unimol_fold.json")
@@ -418,17 +443,11 @@ def main() -> None:
         bace.update(parse_bace_full(bace_full_raw))
     clintox = parse_bace_full(clintox_full_raw) if clintox_full_raw else {}
     tox21 = parse_bace_full(tox21_full_raw) if tox21_full_raw else {}
-    freesolv = parse_freesolv(fs_base, fs_v2)
-    esol = {}
-    if esol_v2:
-        seeds = _freesolv_per_seed(esol_v2)
-        if seeds:
-            esol["V2-T5"] = _stats(seeds)
-    lipo = {}
-    if lipo_v2:
-        seeds = _freesolv_per_seed(lipo_v2)
-        if seeds:
-            lipo["V2-T5"] = _stats(seeds)
+    # Regression matrix (V0/V2-T5/T6/T7) from the per-variant aggregated JSONs
+    # produced by paper/aggregate_regression_seeds.py.
+    freesolv = parse_regression_matrix("freesolv")
+    esol = parse_regression_matrix("esol")
+    lipo = parse_regression_matrix("lipo")
 
     if rf_raw:
         rf = parse_rf_unimol_fold(rf_raw)
@@ -474,8 +493,11 @@ def main() -> None:
             if t7_seeds:
                 table["T7"] = _stats(t7_seeds)
 
+    # Tox21 is deferred from the 6-dataset matrix (Uni-Mol pair extraction
+    # OOMs on its 7,831 molecules); we do not render a Tox21 column even
+    # though the 30-seed RF file still carries a Tox21 cell.
     (OUT_DIR / "classification.tex").write_text(
-        render_cls_table(bbbp, bace, clintox=clintox, tox21=tox21),
+        render_cls_table(bbbp, bace, clintox=clintox),
         encoding="utf-8",
     )
     (OUT_DIR / "regression.tex").write_text(

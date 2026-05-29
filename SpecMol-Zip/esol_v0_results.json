@@ -1,0 +1,43 @@
+{
+  "task": "esol",
+  "variant": "v0",
+  "experiment": "ESOL V0 (LH_Direct 2D baseline)",
+  "data_root": "down_task_esol_unimol_v2",
+  "metric": "RMSE (lower is better)",
+  "results_per_seed": {
+    "seed_9": {
+      "pretrain_seed": 9,
+      "pretrain_best_epoch": 648,
+      "pretrain_final_loss": 16.376868,
+      "best_eval_epoch": 298,
+      "best_val_rmse": 0.6991,
+      "best_test_rmse": 0.792
+    },
+    "seed_19": {
+      "pretrain_seed": 19,
+      "pretrain_best_epoch": 935,
+      "pretrain_final_loss": 16.376693,
+      "best_eval_epoch": 433,
+      "best_val_rmse": 0.7015,
+      "best_test_rmse": 0.7955
+    },
+    "seed_29": {
+      "pretrain_seed": 29,
+      "pretrain_best_epoch": 527,
+      "pretrain_final_loss": 16.37689,
+      "best_eval_epoch": 1789,
+      "best_val_rmse": 0.634,
+      "best_test_rmse": 0.8745
+    }
+  },
+  "summary": {
+    "all_test_rmses": [
+      0.792,
+      0.7955,
+      0.8745
+    ],
+    "mean_rmse": 0.8207,
+    "std_rmse": 0.0467,
+    "n_seeds": 3
+  }
+}

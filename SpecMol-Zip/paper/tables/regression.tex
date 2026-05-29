@@ -3,15 +3,15 @@
 \centering
 \caption{Regression test RMSE (lower is better; mean $\pm$ sample std over per-seed means under matched scaffold splits, $n{=}3$ seeds for deep variants, $n{=}30$ for RF). V2-T5 cells use Uni-Mol pair representations.}
 \label{tab:regression}
-\begin{tabular}{lc}
+\begin{tabular}{lccc}
 \toprule
-Variant & FreeSolv (RMSE) \\
+Variant & FreeSolv (RMSE) & ESOL (RMSE) & Lipo (RMSE) \\
 \midrule
-V0 & 0.760 $\pm$ 0.058 \\
-RF & 0.675 $\pm$ 0.010 \\
-Chemprop & 0.879 $\pm$ 0.085 \\
-V2-T5 & 0.638 $\pm$ 0.017 \\
-T7 & 0.687 $\pm$ 0.070 \\
+V0 & 0.665 $\pm$ 0.031 & 0.821 $\pm$ 0.047 & 0.878 $\pm$ 0.005 \\
+RF & 0.675 $\pm$ 0.010 & -- & -- \\
+Chemprop & 0.879 $\pm$ 0.085 & -- & -- \\
+V2-T5 & 0.638 $\pm$ 0.017 & 0.815 $\pm$ 0.079 & 0.878 $\pm$ 0.011 \\
+T7 & 0.687 $\pm$ 0.070 & -- & -- \\
 \bottomrule
 \end{tabular}
 \end{table}

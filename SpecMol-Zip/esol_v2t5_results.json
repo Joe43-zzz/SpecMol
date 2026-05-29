@@ -1,0 +1,49 @@
+{
+  "task": "esol",
+  "variant": "v2t5",
+  "experiment": "ESOL V2-T5 (LH_Direct_V2 + Uni-Mol pair_repr static gate)",
+  "data_root": "down_task_esol_unimol_v2",
+  "metric": "RMSE (lower is better)",
+  "results_per_seed": {
+    "seed_9": {
+      "pretrain_seed": 9,
+      "pretrain_best_epoch": 933,
+      "pretrain_final_loss": 16.376713,
+      "bias_init": 5.0,
+      "bias_final": 4.8979,
+      "best_eval_epoch": 831,
+      "best_val_rmse": 0.6805,
+      "best_test_rmse": 0.7986
+    },
+    "seed_19": {
+      "pretrain_seed": 19,
+      "pretrain_best_epoch": 985,
+      "pretrain_final_loss": 16.376739,
+      "bias_init": 5.0,
+      "bias_final": 4.9025,
+      "best_eval_epoch": 117,
+      "best_val_rmse": 0.6544,
+      "best_test_rmse": 0.7447
+    },
+    "seed_29": {
+      "pretrain_seed": 29,
+      "pretrain_best_epoch": 958,
+      "pretrain_final_loss": 16.376664,
+      "bias_init": 5.0,
+      "bias_final": 4.8556,
+      "best_eval_epoch": 1812,
+      "best_val_rmse": 0.713,
+      "best_test_rmse": 0.9011
+    }
+  },
+  "summary": {
+    "all_test_rmses": [
+      0.7986,
+      0.7447,
+      0.9011
+    ],
+    "mean_rmse": 0.8148,
+    "std_rmse": 0.0794,
+    "n_seeds": 3
+  }
+}

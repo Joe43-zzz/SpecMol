@@ -1,76 +1,113 @@
 {
-  "bace": {
-    "dataset": "bace",
-    "task": "classification",
-    "split_mode": "unimol_fold_k10_seed42",
-    "seeds": {
-      "9": {
-        "test_metric": 0.8144490644490645,
-        "metric_name": "auc",
-        "n_train": 1209,
-        "n_val": 152,
-        "n_test": 152,
-        "elapsed_sec": 53.6
-      },
-      "19": {
-        "test_metric": 0.8132363132363132,
-        "metric_name": "auc",
-        "n_train": 1209,
-        "n_val": 152,
-        "n_test": 152,
-        "elapsed_sec": 53.9
-      },
-      "29": {
-        "test_metric": 0.8913721413721414,
-        "metric_name": "auc",
-        "n_train": 1209,
-        "n_val": 152,
-        "n_test": 152,
-        "elapsed_sec": 55.3
-      }
-    },
-    "mean": {
-      "auc": 0.8396858396858397
-    },
-    "std": {
-      "auc": 0.04476575731383925
-    }
-  },
   "bbbp": {
     "dataset": "bbbp",
     "task": "classification",
     "split_mode": "unimol_fold_k10_seed42",
     "seeds": {
       "9": {
-        "test_metric": 0.8300865800865801,
+        "test_metric": 0.8235294117647058,
         "metric_name": "auc",
         "n_train": 1640,
         "n_val": 194,
         "n_test": 205,
-        "elapsed_sec": 59.9
+        "elapsed_sec": 48.2
       },
       "19": {
-        "test_metric": 0.8029029793735676,
+        "test_metric": 0.8083778966131908,
         "metric_name": "auc",
         "n_train": 1640,
         "n_val": 194,
         "n_test": 205,
-        "elapsed_sec": 60.9
+        "elapsed_sec": 36.0
       },
       "29": {
-        "test_metric": 0.8130888719124013,
+        "test_metric": 0.8144894321364909,
         "metric_name": "auc",
         "n_train": 1640,
         "n_val": 194,
         "n_test": 205,
-        "elapsed_sec": 61.5
+        "elapsed_sec": 36.3
       }
     },
     "mean": {
-      "auc": 0.8153594771241831
+      "auc": 0.8154655801714625
     },
     "std": {
-      "auc": 0.013733308885769343
+      "auc": 0.007622778468923358
+    }
+  },
+  "bace": {
+    "dataset": "bace",
+    "task": "classification",
+    "split_mode": "unimol_fold_k10_seed42",
+    "seeds": {
+      "9": {
+        "test_metric": 0.8610079575596817,
+        "metric_name": "auc",
+        "n_train": 1209,
+        "n_val": 152,
+        "n_test": 152,
+        "elapsed_sec": 36.3
+      },
+      "19": {
+        "test_metric": 0.8726790450928382,
+        "metric_name": "auc",
+        "n_train": 1209,
+        "n_val": 152,
+        "n_test": 152,
+        "elapsed_sec": 35.9
+      },
+      "29": {
+        "test_metric": 0.8537577365163572,
+        "metric_name": "auc",
+        "n_train": 1209,
+        "n_val": 152,
+        "n_test": 152,
+        "elapsed_sec": 35.7
+      }
+    },
+    "mean": {
+      "auc": 0.8624815797229591
+    },
+    "std": {
+      "auc": 0.009546342298057406
+    }
+  },
+  "clintox": {
+    "dataset": "clintox",
+    "task": "classification",
+    "split_mode": "unimol_fold_k10_seed42",
+    "seeds": {
+      "9": {
+        "test_metric": 0.9714499521072797,
+        "metric_name": "auc",
+        "n_train": 1184,
+        "n_val": 148,
+        "n_test": 148,
+        "elapsed_sec": 29.1
+      },
+      "19": {
+        "test_metric": 0.9786518199233716,
+        "metric_name": "auc",
+        "n_train": 1184,
+        "n_val": 148,
+        "n_test": 148,
+        "elapsed_sec": 29.1
+      },
+      "29": {
+        "test_metric": 0.9734674329501916,
+        "metric_name": "auc",
+        "n_train": 1184,
+        "n_val": 148,
+        "n_test": 148,
+        "elapsed_sec": 29.0
+      }
+    },
+    "mean": {
+      "auc": 0.9745230683269476
+    },
+    "std": {
+      "auc": 0.0037151715366331617
     }
   },
   "freesolv": {

@@ -1,6 +1,8 @@
 {
-  "experiment": "FreeSolv T7 (LH_Direct_V2 + GBF pair_repr + pair-biased attention)",
-  "data_root": "down_task_freesolv_v2",
+  "task": "freesolv",
+  "variant": "t7",
+  "experiment": "FREESOLV T7 (LH_Direct_V2 + Uni-Mol pair + pair-biased attention)",
+  "data_root": "down_task_freesolv_unimol_v2",
   "metric": "RMSE (lower is better)",
   "results_per_seed": {
     "seed_9": {
@@ -59,7 +61,7 @@
       0.7648
     ],
     "mean_rmse": 0.6869,
-    "std_rmse": 0.0704
-  },
-  "pair_repr_source": "RDKit 3D + GBF expansion (64-dim, max_dist=10A, sigma=0.5)"
+    "std_rmse": 0.0704,
+    "n_seeds": 3
+  }
 }

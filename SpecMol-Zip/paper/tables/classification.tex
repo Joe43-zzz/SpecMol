@@ -3,17 +3,16 @@
 \centering
 \caption{Classification test AUC, mean $\pm$ sample std over per-seed means under matched Uni-Mol scaffold-fold split. BBBP V0/V2-T5/T6 use $n{=}9$ training seeds; BBBP T7 and BACE/ClinTox/Tox21 deep cells use $n{=}3$; RF uses the 30-seed protocol of \citet{deng2023systematic}. ClinTox and Tox21 cells report macro-averaged AUC across constituent tasks.}
 \label{tab:classification}
-\begin{tabular}{lcccc}
+\begin{tabular}{lccc}
 \toprule
-Variant & BBBP & BACE & ClinTox & Tox21 \\
+Variant & BBBP & BACE & ClinTox \\
 \midrule
-V0 & 0.828 $\pm$ 0.027 & 0.757 $\pm$ 0.047 & -- & -- \\
-FP-only & -- & 0.846 $\pm$ 0.012 & -- & -- \\
-RF & 0.799 $\pm$ 0.007 & 0.894 $\pm$ 0.003 & 0.817 $\pm$ 0.033 & 0.714 $\pm$ 0.008 \\
-Chemprop & 0.815 $\pm$ 0.014 & 0.840 $\pm$ 0.045 & -- & -- \\
-V2-T5 & 0.831 $\pm$ 0.032 & 0.763 $\pm$ 0.010 & -- & -- \\
-T6 & 0.831 $\pm$ 0.022 & 0.768 $\pm$ 0.088 & -- & -- \\
-T7 & 0.821 $\pm$ 0.011 & 0.780 $\pm$ 0.027 & -- & -- \\
+V0 & 0.828 $\pm$ 0.027 & 0.757 $\pm$ 0.047 & -- \\
+FP-only & -- & 0.846 $\pm$ 0.012 & -- \\
+RF & 0.799 $\pm$ 0.007 & 0.894 $\pm$ 0.003 & 0.817 $\pm$ 0.033 \\
+Chemprop & 0.815 $\pm$ 0.008 & 0.862 $\pm$ 0.010 & 0.975 $\pm$ 0.004 \\
+V2-T5 & 0.831 $\pm$ 0.032 & 0.763 $\pm$ 0.010 & -- \\
+T7 & 0.821 $\pm$ 0.011 & 0.780 $\pm$ 0.027 & -- \\
 \bottomrule
 \end{tabular}
 \end{table}

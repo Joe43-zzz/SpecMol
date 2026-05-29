@@ -1,0 +1,43 @@
+{
+  "task": "freesolv",
+  "variant": "v0",
+  "experiment": "FREESOLV V0 (LH_Direct 2D baseline)",
+  "data_root": "down_task_freesolv_unimol_v2",
+  "metric": "RMSE (lower is better)",
+  "results_per_seed": {
+    "seed_9": {
+      "pretrain_seed": 9,
+      "pretrain_best_epoch": 426,
+      "pretrain_final_loss": 16.214457,
+      "best_eval_epoch": 1931,
+      "best_val_rmse": 0.6603,
+      "best_test_rmse": 0.6486
+    },
+    "seed_19": {
+      "pretrain_seed": 19,
+      "pretrain_best_epoch": 340,
+      "pretrain_final_loss": 16.214482,
+      "best_eval_epoch": 1805,
+      "best_val_rmse": 0.6399,
+      "best_test_rmse": 0.6456
+    },
+    "seed_29": {
+      "pretrain_seed": 29,
+      "pretrain_best_epoch": 937,
+      "pretrain_final_loss": 16.214267,
+      "best_eval_epoch": 1601,
+      "best_val_rmse": 0.5771,
+      "best_test_rmse": 0.7015
+    }
+  },
+  "summary": {
+    "all_test_rmses": [
+      0.6486,
+      0.6456,
+      0.7015
+    ],
+    "mean_rmse": 0.6652,
+    "std_rmse": 0.0314,
+    "n_seeds": 3
+  }
+}

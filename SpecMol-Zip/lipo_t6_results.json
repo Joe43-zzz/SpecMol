@@ -1,0 +1,27 @@
+{
+  "task": "lipo",
+  "variant": "t6",
+  "experiment": "LIPO T6 (LH_Direct_V2 dynamic pair-node update + Uni-Mol pair_repr)",
+  "data_root": "down_task_lipo_unimol_v2",
+  "metric": "RMSE (lower is better)",
+  "results_per_seed": {
+    "seed_9": {
+      "pretrain_seed": 9,
+      "pretrain_best_epoch": 988,
+      "pretrain_final_loss": 16.558571,
+      "bias_init": 5.0,
+      "bias_final": 4.4367,
+      "best_eval_epoch": 1989,
+      "best_val_rmse": 0.9469,
+      "best_test_rmse": 0.875
+    }
+  },
+  "summary": {
+    "all_test_rmses": [
+      0.875
+    ],
+    "mean_rmse": 0.875,
+    "std_rmse": 0.0,
+    "n_seeds": 1
+  }
+}
