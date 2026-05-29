@@ -30,7 +30,11 @@ HPC_RESULTS = REPO / "hpc" / "results"
 
 TASKS = ("esol", "lipo", "freesolv")
 VARIANTS = ("v0", "v2t5", "t6", "t7")
-SEEDS = (9, 19, 29)
+# FreeSolv V0/V2-T5 extended to n=9 (Phase B3, 2026-05-30). Other (task,variant)
+# pairs only have seeds 9/19/29 on disk; aggregate() reports n from the files
+# that actually exist (len(rmses)), so listing 9 seeds here is harmless for them
+# (it just emits a "missing seeds" warning and aggregates the partial set).
+SEEDS = (9, 19, 29, 39, 49, 59, 69, 79, 89)
 
 EXPERIMENT = {
     "v0": "{U} V0 (LH_Direct 2D baseline)",

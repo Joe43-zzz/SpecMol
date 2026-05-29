@@ -274,10 +274,10 @@ def render_cls_table(bbbp: dict, bace: dict,
         "\\begin{table}[t]",
         "\\centering",
         "\\caption{Classification test AUC, mean $\\pm$ sample std over per-seed "
-        "means under matched Uni-Mol scaffold-fold split. BBBP V0/V2-T5/T6 use "
-        "$n{=}9$ training seeds; BBBP T7 and BACE/ClinTox/Tox21 deep cells use "
+        "means under matched Uni-Mol scaffold-fold split. BBBP V0/V2-T5 use "
+        "$n{=}9$ training seeds; BBBP T7 and BACE/ClinTox deep cells use "
         "$n{=}3$; RF uses the 30-seed protocol of \\citet{deng2023systematic}. "
-        "ClinTox and Tox21 cells report macro-averaged AUC across constituent tasks.}",
+        "ClinTox cells report macro-averaged AUC across its two constituent tasks.}",
         "\\label{tab:classification}",
         f"\\begin{{tabular}}{{{col_spec}}}",
         "\\toprule",
@@ -329,8 +329,10 @@ def render_reg_table(freesolv: dict,
         "\\begin{table}[t]",
         "\\centering",
         "\\caption{Regression test RMSE (lower is better; mean $\\pm$ sample std "
-        "over per-seed means under matched scaffold splits, $n{=}3$ seeds for deep "
-        "variants, $n{=}30$ for RF). V2-T5 cells use Uni-Mol pair representations.}",
+        "over per-seed means under matched scaffold splits). FreeSolv V0/V2-T5 use "
+        "$n{=}9$ seeds; ESOL/Lipo deep cells and T7 use $n{=}3$; RF uses $n{=}30$. "
+        "ESOL/Lipo V2-T5 use Uni-Mol pair representations; FreeSolv V2-T5/T7 use an "
+        "RDKit-GBF pair surrogate (\\S\\ref{sec:v2t5}).}",
         "\\label{tab:regression}",
         f"\\begin{{tabular}}{{{col_spec}}}",
         "\\toprule",
@@ -418,9 +420,9 @@ def render_main_table(bbbp: dict, bace: dict, freesolv: dict) -> str:
         "\\begin{table}[t]",
         "\\centering",
         "\\caption{Main results. Classification reports AUC ($\\uparrow$); regression reports RMSE ($\\downarrow$). "
-        "Deep cells are mean~$\\pm$~sample std over training seeds: BBBP V0/V2-T5/T6 use $n{=}9$, "
-        "BBBP T7 and BACE/FreeSolv use $n{=}3$, and RF uses the 30-seed protocol of \\citet{deng2023systematic}. "
-        "FreeSolv V2-T5 uses Uni-Mol pair representations; FreeSolv T7 uses the earlier GBF pair-feature pipeline.}",
+        "Deep cells are mean~$\\pm$~sample std over training seeds: BBBP and FreeSolv V0/V2-T5 use $n{=}9$, "
+        "BBBP T7 and BACE/ClinTox/ESOL/Lipo deep cells use $n{=}3$, and RF uses the 30-seed protocol of \\citet{deng2023systematic}. "
+        "FreeSolv V2-T5/T7 use an RDKit-GBF pair surrogate; the other V2-T5 cells use Uni-Mol pair representations.}",
         "\\label{tab:main}",
         "\\begin{tabular}{lccc}",
         "\\toprule",
