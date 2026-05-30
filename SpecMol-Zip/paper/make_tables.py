@@ -332,7 +332,8 @@ def render_reg_table(freesolv: dict,
         "over per-seed means under matched scaffold splits). FreeSolv V0/V2-T5 use "
         "$n{=}9$ seeds; ESOL/Lipo deep cells and T7 use $n{=}3$; RF uses $n{=}30$. "
         "ESOL/Lipo V2-T5 use Uni-Mol pair representations; FreeSolv V2-T5/T7 use an "
-        "RDKit-GBF pair surrogate (\\S\\ref{sec:v2t5}).}",
+        "RDKit-GBF pair surrogate (\\S\\ref{sec:v2t5}). RMSE is on the standardized "
+        "label scale (std${\\approx}1$ for all three regression sets; FreeSolv is thus not in kcal/mol).}",
         "\\label{tab:regression}",
         f"\\begin{{tabular}}{{{col_spec}}}",
         "\\toprule",
