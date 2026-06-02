@@ -11,17 +11,21 @@ import torch.nn as nn
 from train_utils import (
     calculate_auc,
     calculate_mae,
+    calculate_pr_auc,
     calculate_rmse,
     classification_probe_batch,
+    compute_pos_weight,
     load_model_state_dict,
     ours_loss,
     regression_probe_batch,
     set_seed,
     train_classification_probe_epoch,
+    train_finetune_classification_epoch,
+    train_finetune_regression_epoch,
     train_regression_probe_epoch,
 )
 
-REGRESSION_TASKS = ('freesolv', 'esol', 'lipo')
+REGRESSION_TASKS = ('freesolv', 'esol', 'lipo', 'qm7', 'qm8', 'qm9', 'qm9mu')
 
 from rdkit import RDLogger
 
@@ -145,6 +149,27 @@ def print_model_diagnostics(model, epoch):
                 f"edge_weight_shape={last_edge['shape']} "
                 f"edge_weight_finite={last_edge['finite']}"
             )
+    current_t8_stats = getattr(model, "latest_current_t8_stats", None)
+    if current_t8_stats:
+        for branch_stats in current_t8_stats:
+            gates = branch_stats.get("layer_gates", [])
+            if not gates:
+                continue
+            branch = "high" if branch_stats.get("highpass") else "low"
+            # surface the per-layer ReZero gates (init 0; must move off 0 for T8
+            # to be doing anything) + the node-side delta norm + the rebuilt
+            # edge_weight stats, so a silently-dead T8 is visible under --diagnostics.
+            node_gates = ",".join(f"{g['node_gate']:.4f}" for g in gates)
+            pair_gates = ",".join(f"{g['pair_gate']:.4f}" for g in gates)
+            ew = branch_stats.get("edge_weight", {})
+            print(
+                "[diagnostics] "
+                f"epoch={epoch} mode=current_t8 branch={branch} "
+                f"node_gates=[{node_gates}] pair_gates=[{pair_gates}] "
+                f"node_delta_norm={small(branch_stats.get('node_delta_norm', 0.0))} "
+                f"edge_weight_mean={ew.get('mean', float('nan')):.6f} "
+                f"edge_weight_std={ew.get('std', float('nan')):.6f}"
+            )
 
 
 def _tensor_summary(values, n_bins=20):
@@ -255,7 +280,9 @@ def dump_mlp_phi_stats(spec_model, pretrain_data, batch_size, device,
     )
 
     variant = "v2_t5"
-    if getattr(args, "t6", False):
+    if getattr(args, "t8", False):
+        variant = "t8_logits" if getattr(args, "t8_pair_update", "qk_hadamard") == "logits" else "t8"
+    elif getattr(args, "t6", False):
         variant = "t6"
     elif getattr(args, "t6_safe", False):
         variant = "t6_safe"
@@ -292,6 +319,23 @@ def dump_mlp_phi_stats(spec_model, pretrain_data, batch_size, device,
         print(f"[gate-stats] WARNING no raw samples captured; wrote stub to {out_path}")
 
 
+def _ablate_t7_attention(model):
+    """Force the T7 per-head attention gate fully shut (sigmoid(-1e9)=0) and freeze
+    the pair update, so the attention block contributes exactly zero -- the
+    verify_t7_vf.py VF-equiv mechanism. Used by --ablate_attention to measure the
+    trained attention's contribution to the downstream metric."""
+    prop1 = getattr(getattr(model, "encoder", None), "prop1", None)
+    pair_attn = getattr(prop1, "pair_attn", None)
+    if pair_attn is not None and hasattr(pair_attn, "attn_gate"):
+        with torch.no_grad():
+            pair_attn.attn_gate.data.fill_(-1e9)
+        if hasattr(prop1, "t7_disable_pair_update"):
+            prop1.t7_disable_pair_update = True
+        print("[ablate] T7 attention gate forced shut (contribution zeroed)")
+    else:
+        print("[ablate] WARNING: --ablate_attention set but no T7 pair_attn found")
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='DGC Train')
     parser.add_argument('--datafile', default='in-vitro')
@@ -320,6 +364,11 @@ if __name__ == '__main__':
     parser.add_argument('--split_seed', default=9, type=int)
     parser.add_argument('--eval_epochs', default=2000, type=int)
     parser.add_argument('--eval_seeds', default='9,19,29,39,49,59,69,79,89,99')
+    parser.add_argument('--pretrain_split', default='all', choices=['all', 'train', 'trainval'],
+                        help="Which molecules the contrastive encoder pretrains on. "
+                             "'all' (default, legacy) = train+valid+test structures (transductive); "
+                             "'train' = inductive, encoder never sees valid/test molecules; "
+                             "'trainval' = train+valid (test held out).")
     parser.add_argument('--use_v2', action='store_true',
                         help='Use V2 model (static-pair weighted Laplacian)')
     parser.add_argument('--t6', action='store_true',
@@ -341,6 +390,30 @@ if __name__ == '__main__':
                         help='Attention dropout for T7 (default 0.0)')
     parser.add_argument('--t7_init_std', default=0.02, type=float,
                         help='Init std for T7 out_proj/delta_proj (default 0.02)')
+    parser.add_argument('--t7_force_inject', action='store_true',
+                        help='Forced-injection ablation: bypass T7 per-head residual gate so '
+                             'attention output enters the trunk at full strength and cannot decay '
+                             'to zero. Tests whether T7 inertness is an optimization choice.')
+    parser.add_argument('--t8', action='store_true',
+                        help='Enable T8 faithful Uni-Mol atom<->pair co-update STACK (L independent '
+                             'layers, per-head atom->pair update, run once before the Chebyshev '
+                             'K-loop; requires --use_v2; mutually exclusive with --t6/--t6_safe/--t7). '
+                             'ReZero soft-start makes epoch 0 bitwise-equal to V2-T5.')
+    parser.add_argument('--t8_num_layers', default=4, type=int,
+                        help='T8 number of co-update layers (default 4)')
+    parser.add_argument('--t8_num_heads', default=4, type=int,
+                        help='T8 attention heads (default 4)')
+    parser.add_argument('--t8_head_dim', default=32, type=int,
+                        help='T8 per-head dim (default 32)')
+    parser.add_argument('--t8_dropout', default=0.0, type=float,
+                        help='T8 attention dropout (default 0.0)')
+    parser.add_argument('--t8_init_std', default=0.02, type=float,
+                        help='T8 projection init std (default 0.02)')
+    parser.add_argument('--t8_pair_update', default='qk_hadamard', type=str,
+                        choices=['qk_hadamard', 'qk_outer', 'logits'],
+                        help="T8 atom->pair update: 'qk_hadamard' (multi-channel per-head Q*K "
+                             "Hadamard; 'qk_outer' is a deprecated alias) or 'logits' "
+                             "(scalar-per-head ablation, same rule as T6/T7)")
     parser.add_argument('--t6_warmup_epochs', default=0, type=int,
                         help='Linear LR warmup over the first N epochs (T6 stability). 0 disables (default).')
     parser.add_argument('--bias_init', default=5.0, type=float,
@@ -367,6 +440,42 @@ if __name__ == '__main__':
                              'the V2-T5 / T6 PairToEdgeWeight raw MLP outputs and final edge gates '
                              'to mlp_phi_stats/<tag>.json (used to evidence that the gate actually '
                              'moves away from the b=+5 identity bias). Requires --use_v2.')
+    # Lever A: end-to-end fine-tuning at downstream time.
+    parser.add_argument('--finetune', action='store_true',
+                        help='Unfreeze the encoder and train encoder+head jointly on the downstream '
+                             'task, so task gradient reaches the encoder (and the T7 attention gate). '
+                             'Default off keeps the frozen linear-probe protocol byte-identical.')
+    parser.add_argument('--ft_encoder_lr', default=1e-4, type=float,
+                        help='Encoder LR during --finetune (default 1e-4, lower than the head).')
+    parser.add_argument('--ft_head_lr', default=1e-3, type=float,
+                        help='Head LR during --finetune (default 1e-3).')
+    parser.add_argument('--ft_weight_decay', default=1e-6, type=float,
+                        help='Weight decay during --finetune (default 1e-6).')
+    parser.add_argument('--ft_max_epochs', default=100, type=int,
+                        help='Max fine-tune epochs per eval seed (overrides eval_epochs when --finetune).')
+    parser.add_argument('--ft_patience', default=15, type=int,
+                        help='Fine-tune early-stop patience in epochs (counted after sel_min, on val). '
+                             'Guards the small-data overfit/upper-tail-spike trap.')
+    parser.add_argument('--ft_gate_lr', default=1e-2, type=float,
+                        help='Dedicated LR for the T7 per-head attn_gate during --finetune. The gate '
+                             'sits at logit -2.0 and barely moves at ft_encoder_lr=1e-4; a higher gate '
+                             'LR lets task gradient actually open/close it (the gate has never seen '
+                             'task gradient under the frozen probe).')
+    parser.add_argument('--spec_only', action='store_true',
+                        help='Zero the fingerprint embedding before the head so the downstream signal '
+                             'is forced through the spectral/3D branch only (mirror of --fp_only). Used '
+                             'to attribute any gain to the graph/3D path, not the fingerprint escape hatch.')
+    parser.add_argument('--ablate_attention', action='store_true',
+                        help='After loading the trained checkpoint, force the T7 attention gate fully '
+                             'shut (sigmoid(-1e9)=0) so the attention contributes exactly zero, then '
+                             "evaluate. Comparing against the un-ablated run measures the trained "
+                             'attention contribution. Intended for frozen eval (use without --finetune).')
+    parser.add_argument('--class_weight', action='store_true',
+                        help='Use per-task pos_weight=n_neg/n_pos (clamped) in the downstream BCE, '
+                             'matching the RF baseline class_weight=balanced (baselines_ml.py) for a '
+                             'fair head-to-head on imbalanced sets (BACE, ClinTox CT_TOX). Default off '
+                             'keeps the unweighted BCE byte-identical. Affects both frozen probe and '
+                             '--finetune; no effect on regression tasks.')
     # args parse
     args = parser.parse_args()
     print(args)
@@ -381,14 +490,29 @@ if __name__ == '__main__':
     set_seed(random_seed)
     
     clr_tasks = {'bbbp': 1, 'hiv': 1, 'bace': 1, 'tox21': 12, 'clintox': 2, 'sider': 27, 'MUV': 17, 'toxcast':617, 'PCBA':128, 'ecoli':1,
-                 'freesolv': 1, 'esol': 1, 'lipo': 1}
+                 'freesolv': 1, 'esol': 1, 'lipo': 1,
+                 # QM: qm7 single-target (atomization energy); qm8/qm9 multi-target.
+                 # NOTE: confirm qm8/qm9 column counts against the prepared raw CSV
+                 # (DeepChem load_qm8->16, load_qm9->12) before running multi-task.
+                 'qm7': 1, 'qm8': 16, 'qm9': 12, 'qm9mu': 1}
     task_num = clr_tasks[task]
     task_type = 'regression' if task in REGRESSION_TASKS else 'classification'
     datafile = 'now'
     save_name_pre = '{}_{}_{}'.format(batch_size, epochs, datafile)
     os.makedirs('results/'+save_name_pre, exist_ok=True)
 
-    data = TestbedDataset(root=args.path, dataset='all', task=task, type=args.type)
+    # Pretraining split (transductive-leakage control). Default 'all' preserves
+    # legacy behavior (encoder sees train+valid+test structures, no labels).
+    # 'train' = clean inductive (encoder never touches valid/test molecules).
+    if args.pretrain_split == 'trainval':
+        from torch.utils.data import ConcatDataset
+        data = ConcatDataset([
+            TestbedDataset(root=args.path, dataset='train', task=task, type=args.type),
+            TestbedDataset(root=args.path, dataset='valid', task=task, type=args.type),
+        ])
+    else:
+        data = TestbedDataset(root=args.path, dataset=args.pretrain_split, task=task, type=args.type)
+    print(f"[pretrain] pretrain_split={args.pretrain_split} -> {len(data)} molecules in contrastive pretraining")
 
     if args.use_v2:
         from model_gnn_pre_v2 import LH_Direct_V2
@@ -410,6 +534,14 @@ if __name__ == '__main__':
             t7_head_dim=args.t7_head_dim,
             t7_dropout=args.t7_dropout,
             t7_init_std=args.t7_init_std,
+            t7_force_inject=args.t7_force_inject,
+            t8=args.t8,
+            t8_num_layers=args.t8_num_layers,
+            t8_num_heads=args.t8_num_heads,
+            t8_head_dim=args.t8_head_dim,
+            t8_dropout=args.t8_dropout,
+            t8_init_std=args.t8_init_std,
+            t8_pair_update=args.t8_pair_update,
             bias_init=args.bias_init,
             randomize_pair=args.randomize_pair,
         )
@@ -431,7 +563,11 @@ if __name__ == '__main__':
     cnt_wait = 0
     os.makedirs("pkl", exist_ok=True)
     job_id = os.environ.get("SLURM_JOB_ID", str(os.getpid()))
-    tag = f"{args.task}_seed{random_seed}_job{job_id}_{int(time.time())}"
+    # Include PID: under Slurm all concurrent arms in one sbatch share SLURM_JOB_ID,
+    # and same-second launches share int(time.time()), so without the PID the ckpt
+    # path collides across arms (e.g. V0 reloads a T7-saved ckpt -> state_dict
+    # mismatch crash). PID is unique per process and fixes the collision.
+    tag = f"{args.task}_seed{random_seed}_job{job_id}_pid{os.getpid()}_{int(time.time())}"
     ckpt_path = os.path.join("pkl", f"best_spec_model_{tag}.pkl")
     best_t = 0
     for epoch in range(0, epochs + 1):
@@ -466,6 +602,9 @@ if __name__ == '__main__':
     
     spec_model.load_state_dict(load_model_state_dict(ckpt_path))
     spec_model.eval()
+
+    if args.ablate_attention:
+        _ablate_t7_attention(spec_model)
 
     # ------------------------------------------------------------------
     # Optional: dump V2-T5 / T6 gate statistics for the paper (M5 hook).
@@ -508,10 +647,34 @@ if __name__ == '__main__':
         loss_fn = nn.BCEWithLogitsLoss(reduction='mean')
     
     split_seeds = [int(seed.strip()) for seed in str(args.eval_seeds).split(',') if seed.strip()]
+    # Lever A knobs: shorter schedule and earlier model-selection when fine-tuning.
+    n_eval_epochs = args.ft_max_epochs if args.finetune else args.eval_epochs
+    sel_min = 5 if args.finetune else EVAL_MIN_EPOCH
     for split_seed in split_seeds:
         set_seed(split_seed)
+        if args.finetune:
+            # Fine-tuning mutates the encoder; reload the pretrained checkpoint for
+            # each eval seed so seeds don't contaminate one another.
+            spec_model.load_state_dict(load_model_state_dict(ckpt_path))
+            spec_model.to(args.device)
         logreg = LogReg(hid_dim=args.hid_dim, n_classes=task_num).to(args.device)
-        opt = torch.optim.Adam(logreg.parameters(), lr=0.001, weight_decay=0.0) #original:0.01
+        if args.finetune:
+            # Dedicated param group for the T7 per-head attn_gate: at ft_encoder_lr
+            # (1e-4) the gate barely moves from its logit -2.0 init in ft_max_epochs,
+            # so the "does fine-tuning open the gate" question is never actually
+            # tested. A higher gate LR lets task gradient drive it.
+            gate_params = [p for n, p in spec_model.named_parameters() if n.endswith('attn_gate')]
+            gate_ids = {id(p) for p in gate_params}
+            base_params = [p for p in spec_model.parameters() if id(p) not in gate_ids]
+            groups = [
+                {'params': base_params, 'lr': args.ft_encoder_lr},
+                {'params': logreg.parameters(), 'lr': args.ft_head_lr},
+            ]
+            if gate_params:
+                groups.append({'params': gate_params, 'lr': args.ft_gate_lr})
+            opt = torch.optim.Adam(groups, weight_decay=args.ft_weight_decay)
+        else:
+            opt = torch.optim.Adam(logreg.parameters(), lr=0.001, weight_decay=0.0) #original:0.01
         # Deterministic shuffle generator: same split_seed gives same batch order
         # across runs, eliminating one source of restart-to-restart variance.
         shuffle_gen = torch.Generator()
@@ -528,69 +691,113 @@ if __name__ == '__main__':
             best_epoch = 0
             test_rmse = float('inf')
             test_mae = float('inf')
-            for epoch in range(args.eval_epochs):
-                train_regression_probe_epoch(
-                    train_data_loader, spec_model, logreg, opt, loss_fn, args.device
-                )
+            ft_no_improve = 0
+            for epoch in range(n_eval_epochs):
+                if args.finetune:
+                    train_finetune_regression_epoch(
+                        train_data_loader, spec_model, logreg, opt, loss_fn, args.device, n_task=task_num
+                    )
+                else:
+                    train_regression_probe_epoch(
+                        train_data_loader, spec_model, logreg, opt, loss_fn, args.device, n_task=task_num
+                    )
                 logreg.eval()
+                if args.finetune:
+                    spec_model.eval()
                 with torch.no_grad():
                     val_preds = torch.Tensor().to(args.device)
                     val_y = torch.Tensor().to(args.device)
                     for tem in val_data_loader:
-                        preds, y = regression_probe_batch(tem, spec_model, logreg, args.device)
+                        preds, y = regression_probe_batch(tem, spec_model, logreg, args.device, n_task=task_num)
                         val_preds = torch.cat((val_preds, preds), 0)
                         val_y = torch.cat((val_y, y), 0)
                     val_rmse = calculate_rmse(val_y, val_preds)
-                    if epoch >= EVAL_MIN_EPOCH and val_rmse < best_val_rmse - EVAL_IMPROVE_TOL:
+                    if epoch >= sel_min and val_rmse < best_val_rmse - EVAL_IMPROVE_TOL:
                         print('Val rmse in Epoch {} is {}'.format(epoch, val_rmse))
                         best_val_rmse = val_rmse
                         test_preds = torch.Tensor().to(args.device)
                         test_y = torch.Tensor().to(args.device)
                         for tem in test_data_loader:
-                            preds, y = regression_probe_batch(tem, spec_model, logreg, args.device)
+                            preds, y = regression_probe_batch(tem, spec_model, logreg, args.device, n_task=task_num)
                             test_preds = torch.cat((test_preds, preds), 0)
                             test_y = torch.cat((test_y, y), 0)
                         test_rmse = calculate_rmse(test_y, test_preds)
                         test_mae = calculate_mae(test_y, test_preds)
                         print('Test rmse in Epoch {} is {} (mae {})'.format(epoch, test_rmse, test_mae))
                         best_epoch = epoch
+                        ft_no_improve = 0
+                    elif epoch >= sel_min:
+                        ft_no_improve += 1
+                if args.finetune and ft_no_improve >= args.ft_patience:
+                    print('fine-tune early stop (reg) at epoch {} (patience {})'.format(epoch, args.ft_patience))
+                    break
             print('Best Test RMSE for {} in Epoch {} is {} (MAE {})'.format(args.task, best_epoch, test_rmse, test_mae))
         else:
             val_auc_best = 0
             best_epoch = 0
             test_auc = 0.0
-            for epoch in range(args.eval_epochs):
-                train_classification_probe_epoch(
-                    train_data_loader, spec_model, logreg, opt, loss_fn, args.device, n_task=task_num,
-                    fp_only=args.fp_only,
-                )
+            test_prauc = 0.0
+            ft_no_improve = 0
+            # Opt-in class balancing (--class_weight): per-task pos_weight from the
+            # train labels, matching RF class_weight='balanced'. None => unchanged.
+            # Count via a SEPARATE shuffle=False loader so we do NOT advance
+            # shuffle_gen -- iterating train_data_loader here would consume one
+            # randperm draw and desync the per-epoch batch order from a matched
+            # --class_weight-off run at the same split_seed (breaking the
+            # deterministic-shuffle invariant the generator was added to keep).
+            pos_weight = None
+            if args.class_weight:
+                count_loader = DataLoader(train_data, batch_size=batch_size, shuffle=False)
+                pos_weight = compute_pos_weight(count_loader, task_num)
+                print('[class_weight] per-task pos_weight = {}'.format([round(w, 4) for w in pos_weight.tolist()]))
+            for epoch in range(n_eval_epochs):
+                if args.finetune:
+                    train_finetune_classification_epoch(
+                        train_data_loader, spec_model, logreg, opt, loss_fn, args.device, n_task=task_num,
+                        fp_only=args.fp_only, spec_only=args.spec_only, pos_weight=pos_weight,
+                    )
+                else:
+                    train_classification_probe_epoch(
+                        train_data_loader, spec_model, logreg, opt, loss_fn, args.device, n_task=task_num,
+                        fp_only=args.fp_only, spec_only=args.spec_only, pos_weight=pos_weight,
+                    )
 
                 # Disable Dropout during val/test inference (LogReg has p=0.2 dropout that
                 # otherwise stays active under no_grad and amplifies AUC noise on small val sets).
                 logreg.eval()
+                if args.finetune:
+                    spec_model.eval()
                 with torch.no_grad():
                     val_logits = torch.Tensor().to(args.device)
                     val_y = torch.Tensor().to(args.device)
                     for tem in val_data_loader:
-                        logits, y = classification_probe_batch(tem, spec_model, logreg, args.device, task_num, fp_only=args.fp_only)
+                        logits, y = classification_probe_batch(tem, spec_model, logreg, args.device, task_num, fp_only=args.fp_only, spec_only=args.spec_only)
                         val_logits = torch.cat((val_logits, logits),0)
                         val_y = torch.cat((val_y, y),0)
                     val_auc = calculate_auc(val_y.cpu().numpy(), val_logits.cpu().numpy(), task_num)
                     # Two-part guard against early-epoch noise locking model selection:
                     # (1) require minimum epochs before any selection (avoid lucky-spike trap);
                     # (2) require improvement >= EVAL_IMPROVE_TOL (avoid sub-noise updates).
-                    if epoch >= EVAL_MIN_EPOCH and val_auc > val_auc_best + EVAL_IMPROVE_TOL:
+                    if epoch >= sel_min and val_auc > val_auc_best + EVAL_IMPROVE_TOL:
                         print('Val auc in Epoch {} is {}'.format(epoch, val_auc))
                         val_auc_best = val_auc
                         test_logits = torch.Tensor().to(args.device)
                         test_y = torch.Tensor().to(args.device)
                         for tem in test_data_loader:
-                            logits, y = classification_probe_batch(tem, spec_model, logreg, args.device, task_num, fp_only=args.fp_only)
+                            logits, y = classification_probe_batch(tem, spec_model, logreg, args.device, task_num, fp_only=args.fp_only, spec_only=args.spec_only)
                             test_logits = torch.cat((test_logits, logits),0)
                             test_y = torch.cat((test_y, y),0)
                         test_auc = calculate_auc(test_y.cpu().numpy(), test_logits.cpu().numpy(), task_num)
-                        print('Test auc in Epoch {} is {}'.format(epoch, test_auc))
+                        test_prauc = calculate_pr_auc(test_y.cpu().numpy(), test_logits.cpu().numpy(), task_num)
+                        print('Test auc in Epoch {} is {} (pr_auc {})'.format(epoch, test_auc, test_prauc))
                         best_epoch = epoch
+                        ft_no_improve = 0
+                    elif epoch >= sel_min:
+                        ft_no_improve += 1
+                if args.finetune and ft_no_improve >= args.ft_patience:
+                    print('fine-tune early stop (cls) at epoch {} (patience {})'.format(epoch, args.ft_patience))
+                    break
             print('Best Test Auc for {} in Epoch {} is {}'.format(args.task, best_epoch, test_auc))
+            print('Best Test PR-AUC for {} in Epoch {} is {}'.format(args.task, best_epoch, test_prauc))
             
         

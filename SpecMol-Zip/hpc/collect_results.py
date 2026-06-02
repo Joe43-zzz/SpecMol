@@ -51,6 +51,12 @@ BEST_AUC_RE = re.compile(
 BEST_RMSE_RE = re.compile(
     r"Best Test RMSE for (?P<task>\w+) in Epoch (?P<epoch>\d+) is (?P<value>[0-9.eE+-]+)"
 )
+# PR-AUC (average precision) is emitted ALONGSIDE ROC-AUC for classification tasks
+# (main_pretrain.py prints a separate "Best Test PR-AUC ..." line). Parsed additively
+# so existing auc/rmse consumers are unaffected.
+BEST_PRAUC_RE = re.compile(
+    r"Best Test PR-AUC for (?P<task>\w+) in Epoch (?P<epoch>\d+) is (?P<value>[0-9.eE+-]+)"
+)
 LOSS_RE = re.compile(r"In Epoch (\d+)th, the train loss is (\d+\.\d+)")
 EARLY_STOP_RE = re.compile(r"Early stopping!")
 LOADING_RE = re.compile(r"Loading (\d+)th eppoch")
@@ -95,11 +101,25 @@ def parse_log(path: Path, eval_seeds, metric_name: str = "auc"):
         seed = eval_seeds[i] if i < len(eval_seeds) else i
         splits[seed] = {"test_metric": value, "best_eval_epoch": epoch}
 
+    # Attach PR-AUC per split (classification only). The "Best Test PR-AUC" line is
+    # printed right after each "Best Test Auc" line, so emission order aligns 1:1
+    # with best_matches by index.
+    if metric_name == "auc":
+        prauc_vals = [float(m.group("value")) for m in BEST_PRAUC_RE.finditer(text)]
+        for i, (epoch, value) in enumerate(best_matches):
+            seed = eval_seeds[i] if i < len(eval_seeds) else i
+            if i < len(prauc_vals):
+                splits[seed]["test_pr_auc"] = prauc_vals[i]
+
     if splits:
         result["eval_splits"] = {f"split_{k}": v for k, v in sorted(splits.items())}
         vals = [v["test_metric"] for v in splits.values()]
         result["mean_test_metric"] = round(float(np.mean(vals)), 4)
         result["std_test_metric"] = round(float(np.std(vals)), 4)
+        prauc_present = [v["test_pr_auc"] for v in splits.values() if "test_pr_auc" in v]
+        if prauc_present:
+            result["mean_test_pr_auc"] = round(float(np.mean(prauc_present)), 4)
+            result["std_test_pr_auc"] = round(float(np.std(prauc_present)), 4)
 
     return result if result else None
 
@@ -107,6 +127,7 @@ def parse_log(path: Path, eval_seeds, metric_name: str = "auc"):
 def collect_variant(log_dir: Path, variant: str, pattern: re.Pattern, eval_seeds, metric_name: str):
     variant_results = {}
     all_vals = []
+    all_prauc = []
 
     # Order logs by mtime DESC so the freshest log per (variant, seed) wins.
     # Earlier sorted-by-name ordering caused old historical jobids to shadow
@@ -138,6 +159,8 @@ def collect_variant(log_dir: Path, variant: str, pattern: re.Pattern, eval_seeds
         variant_results[seed_key] = result
         for v in result["eval_splits"].values():
             all_vals.append(v["test_metric"])
+            if "test_pr_auc" in v:
+                all_prauc.append(v["test_pr_auc"])
 
     if not variant_results:
         return None
@@ -153,6 +176,10 @@ def collect_variant(log_dir: Path, variant: str, pattern: re.Pattern, eval_seeds
             if "mean_test_metric" in r
         ]
         summary["per_seed_means"] = per_seed_means
+    if all_prauc:
+        prauc_arr = np.array(all_prauc)
+        summary["grand_mean_pr_auc"] = round(float(prauc_arr.mean()), 4)
+        summary["grand_std_pr_auc"] = round(float(prauc_arr.std()), 4)
 
     return {"results_per_seed": variant_results, "summary": summary}
 
