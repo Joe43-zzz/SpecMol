@@ -34,16 +34,60 @@
       "best_eval_epoch": 1984,
       "best_val_rmse": 0.9764,
       "best_test_rmse": 0.8881
+    },
+    "seed_39": {
+      "pretrain_seed": 39,
+      "pretrain_best_epoch": 988,
+      "pretrain_final_loss": 16.55857,
+      "bias_init": 5.0,
+      "bias_final": 4.4276,
+      "best_eval_epoch": 1992,
+      "best_val_rmse": 0.9522,
+      "best_test_rmse": 0.8627
+    },
+    "seed_49": {
+      "pretrain_seed": 49,
+      "pretrain_best_epoch": 991,
+      "pretrain_final_loss": 16.558573,
+      "bias_init": 5.0,
+      "bias_final": 4.3095,
+      "best_eval_epoch": 1998,
+      "best_val_rmse": 0.9547,
+      "best_test_rmse": 0.8681
+    },
+    "seed_59": {
+      "pretrain_seed": 59,
+      "pretrain_best_epoch": 995,
+      "pretrain_final_loss": 16.558578,
+      "bias_init": 5.0,
+      "bias_final": 4.2966,
+      "best_eval_epoch": 1986,
+      "best_val_rmse": 0.9613,
+      "best_test_rmse": 0.8707
+    },
+    "seed_69": {
+      "pretrain_seed": 69,
+      "pretrain_best_epoch": 998,
+      "pretrain_final_loss": 16.558571,
+      "bias_init": 5.0,
+      "bias_final": 4.4229,
+      "best_eval_epoch": 1998,
+      "best_val_rmse": 0.9727,
+      "best_test_rmse": 0.8754
     }
   },
   "summary": {
     "all_test_rmses": [
       0.8779,
       0.8668,
-      0.8881
+      0.8881,
+      0.8627,
+      0.8681,
+      0.8707,
+      0.8754
     ],
-    "mean_rmse": 0.8776,
-    "std_rmse": 0.0107,
-    "n_seeds": 3
+    "mean_rmse": 0.8728,
+    "std_rmse": 0.0085,
+    "n_seeds": 7
   }
 }

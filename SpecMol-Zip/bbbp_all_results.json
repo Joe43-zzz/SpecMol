@@ -6,102 +6,66 @@
   "v0_baseline": {
     "description": "V0 baseline (no pair_repr)",
     "results": {
-      "seed9": {
-        "best_test_auc": 0.7959,
-        "best_epoch": 233
-      },
-      "seed19": {
-        "best_test_auc": 0.8651,
-        "best_epoch": 767
-      },
-      "seed29": {
-        "best_test_auc": 0.8455,
-        "best_epoch": 332
-      }
+      "seed9":  {"best_test_auc": 0.7959, "best_epoch": 233},
+      "seed19": {"best_test_auc": 0.8651, "best_epoch": 767},
+      "seed29": {"best_test_auc": 0.8455, "best_epoch": 332},
+      "seed39": {"eval_seed_9": 0.8332, "eval_seed_19": 0.8424, "eval_seed_29": 0.8379, "mean": 0.8378},
+      "seed49": {"eval_seed_9": 0.8459, "eval_seed_19": 0.8460, "eval_seed_29": 0.8444, "mean": 0.8454},
+      "seed59": {"eval_seed_9": 0.7871, "eval_seed_19": 0.7826, "eval_seed_29": 0.7815, "mean": 0.7837},
+      "seed69": {"eval_seed_9": 0.8069, "eval_seed_19": 0.8031, "eval_seed_29": 0.8024, "mean": 0.8041},
+      "seed79": {"eval_seed_9": 0.8489, "eval_seed_19": 0.8453, "eval_seed_29": 0.8489, "mean": 0.8477},
+      "seed89": {"eval_seed_9": 0.8214, "eval_seed_19": 0.8229, "eval_seed_29": 0.8314, "mean": 0.8252}
     },
-    "grand_mean": 0.8355,
-    "std": 0.0357,
-    "n_seeds": 3
+    "grand_mean": 0.828,
+    "std": 0.028,
+    "n_seeds": 9
   },
   "v2_t5_static_pair": {
     "description": "V2-T5 static Uni-Mol pair_repr edge weighting",
     "results": {
-      "seed9": {
-        "eval_seed_9": 0.8256,
-        "eval_seed_19": 0.8767,
-        "eval_seed_29": 0.8828,
-        "mean": 0.862
-      },
-      "seed19": {
-        "eval_seed_9": 0.8418,
-        "eval_seed_19": 0.8498,
-        "eval_seed_29": 0.824,
-        "mean": 0.838
-      },
-      "seed29": {
-        "eval_seed_9": 0.846,
-        "eval_seed_19": 0.9069,
-        "eval_seed_29": 0.9086,
-        "mean": 0.887
-      }
+      "seed9":  {"eval_seed_9": 0.8256, "eval_seed_19": 0.8767, "eval_seed_29": 0.8828, "mean": 0.862},
+      "seed19": {"eval_seed_9": 0.8418, "eval_seed_19": 0.8498, "eval_seed_29": 0.8240, "mean": 0.838},
+      "seed29": {"eval_seed_9": 0.8460, "eval_seed_19": 0.9069, "eval_seed_29": 0.9086, "mean": 0.887},
+      "seed39": {"mean": 0.7979},
+      "seed49": {"mean": 0.8170},
+      "seed59": {"mean": 0.8154},
+      "seed69": {"mean": 0.7810},
+      "seed79": {"mean": 0.8383},
+      "seed89": {"mean": 0.8407}
     },
-    "grand_mean": 0.8623,
-    "std": 0.0245,
-    "n_seeds": 3
+    "grand_mean": 0.831,
+    "std": 0.032,
+    "n_seeds": 9
   },
   "t6_dynamic_pair_node": {
     "description": "T6 bidirectional dynamic pair-node update",
     "results": {
-      "seed9": {
-        "eval_seed_9": 0.8793,
-        "eval_seed_19": 0.8695,
-        "eval_seed_29": 0.8571,
-        "mean": 0.869
-      },
-      "seed19": {
-        "eval_seed_9": 0.8099,
-        "eval_seed_19": 0.7987,
-        "eval_seed_29": 0.7926,
-        "mean": 0.8
-      },
-      "seed29": {
-        "eval_seed_9": 0.8357,
-        "eval_seed_19": 0.8614,
-        "eval_seed_29": 0.8527,
-        "mean": 0.85
-      }
+      "seed9":  {"eval_seed_9": 0.8793, "eval_seed_19": 0.8695, "eval_seed_29": 0.8571, "mean": 0.869},
+      "seed19": {"eval_seed_9": 0.8099, "eval_seed_19": 0.7987, "eval_seed_29": 0.7926, "mean": 0.800},
+      "seed29": {"eval_seed_9": 0.8357, "eval_seed_19": 0.8614, "eval_seed_29": 0.8527, "mean": 0.850},
+      "seed39": {"eval_seed_9": 0.8261, "eval_seed_19": 0.8312, "eval_seed_29": 0.8255, "mean": 0.8276},
+      "seed49": {"eval_seed_9": 0.8345, "eval_seed_19": 0.8343, "eval_seed_29": 0.8354, "mean": 0.8347},
+      "seed59": {"eval_seed_9": 0.8087, "eval_seed_19": 0.8086, "eval_seed_29": 0.8101, "mean": 0.8091},
+      "seed69": {"eval_seed_9": 0.8422, "eval_seed_19": 0.8422, "eval_seed_29": 0.8425, "mean": 0.8423},
+      "seed79": {"eval_seed_9": 0.8313, "eval_seed_19": 0.8322, "eval_seed_29": 0.8320, "mean": 0.8318},
+      "seed89": {"eval_seed_9": 0.8098, "eval_seed_19": 0.8131, "eval_seed_29": 0.8076, "mean": 0.8101}
     },
-    "grand_mean": 0.8397,
-    "std": 0.0356,
-    "n_seeds": 3
+    "grand_mean": 0.831,
+    "std": 0.022,
+    "n_seeds": 9
   },
   "v2_t5_random_pair_ablation": {
     "description": "V2-T5 with Gaussian-noise pair tensor (geometry-stripped). Matched seeds 9/19/29 only (n=3).",
     "results": {
-      "seed9": {
-        "eval_seed_9": 0.8491,
-        "eval_seed_19": 0.8464,
-        "eval_seed_29": 0.8481,
-        "mean": 0.8479
-      },
-      "seed19": {
-        "eval_seed_9": 0.8149,
-        "eval_seed_19": 0.8135,
-        "eval_seed_29": 0.8126,
-        "mean": 0.8137
-      },
-      "seed29": {
-        "eval_seed_9": 0.8268,
-        "eval_seed_19": 0.8321,
-        "eval_seed_29": 0.8256,
-        "mean": 0.8282
-      }
+      "seed9":  {"eval_seed_9": 0.8491, "eval_seed_19": 0.8464, "eval_seed_29": 0.8481, "mean": 0.8479},
+      "seed19": {"eval_seed_9": 0.8149, "eval_seed_19": 0.8135, "eval_seed_29": 0.8126, "mean": 0.8137},
+      "seed29": {"eval_seed_9": 0.8268, "eval_seed_19": 0.8321, "eval_seed_29": 0.8256, "mean": 0.8282}
     },
-    "grand_mean": 0.8299,
-    "std": 0.0172,
+    "grand_mean": 0.830,
+    "std": 0.017,
     "n_seeds": 3,
     "matched_seed_delta_vs_real": {
-      "seed9": 0.0141,
+      "seed9":  0.0141,
       "seed19": 0.0243,
       "seed29": 0.0588,
       "mean_delta": 0.0324,
@@ -109,12 +73,11 @@
     }
   },
   "summary": {
-    "n3_grand_means": {
-      "v0_baseline": 0.8355,
-      "v2_t5_static_pair": 0.8623,
-      "t6_dynamic_pair_node": 0.8397,
-      "v2_t5_random_pair_ablation": 0.8299
+    "n9_grand_means": {
+      "V0":    0.828,
+      "V2-T5": 0.831,
+      "T6":    0.831
     },
-    "note": "Uniform n=3 {9,19,29}; n=9 extension archived to n9_archive/ (compute-limited; Uni-Mol-protocol consistency)."
+    "note": "At n=9 the three deep variants tie within seed variance; the original n=3 V2-T5 advantage (+0.026 over V0) does not survive scale-up. Mechanism finding (aromatic-routing gate basin) survives. Matched-seed random-pair ablation on seeds 9/19/29: real Uni-Mol pair beats random by +0.032 mean (3/3 wins, p=0.125)."
   }
 }

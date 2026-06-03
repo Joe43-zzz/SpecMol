@@ -1,0 +1,87 @@
+{
+  "n_cached_in_manifest": 14833,
+  "reorder_ok": 12532,
+  "reorder_ok_frac": 0.8449,
+  "via_canonical": 934,
+  "via_generic_fallback": 11598,
+  "no_map": 33,
+  "element_mismatch": 140,
+  "bond_gate_fail": 2128,
+  "total_bad_bonds": 12975,
+  "total_bonds": 272543,
+  "bad_bond_frac": 0.04760717,
+  "no_map_examples": [
+    "Cc1n[nH]c2ncnn12",
+    "c1nc2[nH]nnn2n1",
+    "CC12CC1n1nccc12",
+    "c1noc2onnc12",
+    "O=C1C=Cn2nncc21",
+    "c1nc2ccocc-2n1",
+    "Cn1nnn2ncnc12",
+    "c1nc2cnocc-2n1",
+    "c1nc2c[nH]nnc-2n1",
+    "c1c[nH]c2nccc-2n1"
+  ],
+  "gate_fail_examples": [
+    {
+      "smiles": "CC(C)N(C)C(C)C#N",
+      "bad": 7,
+      "n": 22,
+      "via": "canon"
+    },
+    {
+      "smiles": "CC1C2C1C1(C)C2N1C",
+      "bad": 7,
+      "n": 24,
+      "via": "canon"
+    },
+    {
+      "smiles": "CCOC1=NCC2OC12",
+      "bad": 4,
+      "n": 19,
+      "via": "canon"
+    },
+    {
+      "smiles": "CC1=NCC(CCO)O1",
+      "bad": 4,
+      "n": 20,
+      "via": "canon"
+    },
+    {
+      "smiles": "O=CNC12C3C4C1N4C32",
+      "bad": 8,
+      "n": 18,
+      "via": "canon"
+    },
+    {
+      "smiles": "NC=[NH+]c1ccoc1[O-]",
+      "bad": 12,
+      "n": 15,
+      "via": "canon"
+    },
+    {
+      "smiles": "O=CC12CC3C1CCN32",
+      "bad": 5,
+      "n": 20,
+      "via": "canon"
+    },
+    {
+      "smiles": "Cc1nc(F)nc(=N)o1",
+      "bad": 4,
+      "n": 13,
+      "via": "canon"
+    },
+    {
+      "smiles": "C1=NC(C2CCC2)CO1",
+      "bad": 6,
+      "n": 21,
+      "via": "canon"
+    },
+    {
+      "smiles": "N=c1cnc(N)ncn1",
+      "bad": 5,
+      "n": 14,
+      "via": "canon"
+    }
+  ]
+}

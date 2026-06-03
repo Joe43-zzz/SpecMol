@@ -1,0 +1,5 @@
+matched split [unimol_out_qm9mu_dft]: n_train=10040 n_test=1256 (deep used same)
+DEEP ref (test RMSE): DFT_deep_V0=0.8798_T8=0.8815_best=0.8758
+[qm9mu RF weak11] nfeat=1035 RMSE=0.9387+/-0.0006 MAE=0.6327+/-0.0013
+[qm9mu RF strongFull] nfeat=1241 RMSE=0.8446+/-0.0028 MAE=0.5930+/-0.0015
+RF_QM9MU_DONE

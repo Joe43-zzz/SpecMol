@@ -34,16 +34,82 @@
       "best_eval_epoch": 1812,
       "best_val_rmse": 0.713,
       "best_test_rmse": 0.9011
+    },
+    "seed_39": {
+      "pretrain_seed": 39,
+      "pretrain_best_epoch": 811,
+      "pretrain_final_loss": 16.376769,
+      "bias_init": 5.0,
+      "bias_final": 4.8918,
+      "best_eval_epoch": 384,
+      "best_val_rmse": 0.659,
+      "best_test_rmse": 0.7577
+    },
+    "seed_49": {
+      "pretrain_seed": 49,
+      "pretrain_best_epoch": 318,
+      "pretrain_final_loss": 16.376999,
+      "bias_init": 5.0,
+      "bias_final": 4.9388,
+      "best_eval_epoch": 112,
+      "best_val_rmse": 0.6762,
+      "best_test_rmse": 0.7623
+    },
+    "seed_59": {
+      "pretrain_seed": 59,
+      "pretrain_best_epoch": 476,
+      "pretrain_final_loss": 16.376911,
+      "bias_init": 5.0,
+      "bias_final": 4.9319,
+      "best_eval_epoch": 284,
+      "best_val_rmse": 0.6989,
+      "best_test_rmse": 0.7977
+    },
+    "seed_69": {
+      "pretrain_seed": 69,
+      "pretrain_best_epoch": 584,
+      "pretrain_final_loss": 16.376861,
+      "bias_init": 5.0,
+      "bias_final": 4.935,
+      "best_eval_epoch": 1400,
+      "best_val_rmse": 0.7798,
+      "best_test_rmse": 0.706
+    },
+    "seed_79": {
+      "pretrain_seed": 79,
+      "pretrain_best_epoch": 865,
+      "pretrain_final_loss": 16.376725,
+      "bias_init": 5.0,
+      "bias_final": 4.8708,
+      "best_eval_epoch": 365,
+      "best_val_rmse": 0.6311,
+      "best_test_rmse": 0.7502
+    },
+    "seed_89": {
+      "pretrain_seed": 89,
+      "pretrain_best_epoch": 467,
+      "pretrain_final_loss": 16.376936,
+      "bias_init": 5.0,
+      "bias_final": 4.9221,
+      "best_eval_epoch": 208,
+      "best_val_rmse": 0.6442,
+      "best_test_rmse": 0.7244
     }
   },
   "summary": {
     "all_test_rmses": [
       0.7986,
       0.7447,
-      0.9011
+      0.9011,
+      0.7577,
+      0.7623,
+      0.7977,
+      0.706,
+      0.7502,
+      0.7244
     ],
-    "mean_rmse": 0.8148,
-    "std_rmse": 0.0794,
-    "n_seeds": 3
+    "mean_rmse": 0.7714,
+    "std_rmse": 0.0572,
+    "n_seeds": 9
   }
 }

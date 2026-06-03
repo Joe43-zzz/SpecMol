@@ -1,0 +1,67 @@
+{
+  "title": "QM geometry-signal pilot: QM7 (composition) + QM9-mu (geometry-pure), 7-arm geometry/architecture decomposition + matched RF ceiling",
+  "date": "2026-06-02",
+  "branch": "codex/t7-attn-improve",
+  "question": "Does 3D (Uni-Mol pair_repr) injection extract a real geometry signal where geometry IS the signal (QM9 dipole), and does it beat the fingerprint/descriptor ceiling?",
+  "coordinate_provenance_CAVEAT": "CRITICAL: this pilot fed Uni-Mol RDKit-MMFF conformers (prepare_qm9mu_unimol_input.py:98 EmbedMolecule(randomSeed=42) + :102 MMFFOptimizeMolecule), NOT the true GDB-9 DFT-optimized coordinates. So every 'geometry' finding below is MMFF geometry, not real DFT geometry. Hamakawa2025 / Adams&Coley show wrong/approximate conformers can collapse the geometry signal. The make-or-break 'does REAL 3D help on a geometry-pure target' cell (Uni-Mol fed true GDB-9 DFT coords, end-to-end finetune) is NOT done here -- it is the Stage-2 deciding experiment in plan shiny-hugging-glacier.md. Read all 'real geometry' / 'reads geometry' wording below as 'reads MMFF geometry'.",
+  "protocol": {
+    "deep": "finetune, epochs 1000 pretrain + ft_max_epochs 40 / patience 15, batch 1024, K 10, hid_dim 512, eval_seeds 9/19/29, RMSE on test split. NOTE: Uni-Mol pair_repr extracted on RDKit-MMFF conformers, not DFT coords (see coordinate_provenance_CAVEAT).",
+    "arms": ["V0", "V2T5", "random", "T7", "T7random", "T8", "T8random"],
+    "geometry_effect": "real_arm - matched_random_arm (negative = real Uni-Mol geometry helps beyond architecture)",
+    "architecture_effect": "random_arm - V0 (effect of the injection ARCHITECTURE with geometry destroyed by pair shuffling)",
+    "rf": "matched split via manifest (deep's exact train/test, embed_ok molecules only); Morgan(1024)+descriptors; RandomForestRegressor(300) seeds 9/19/29; weak11=composition descriptors, strongFull=full RDKit ~210 incl Gasteiger partial-charge descriptors",
+    "rf_note": "RF evaluated on test only (1473 for qm9mu / 684 for qm7) to match deep's reported metric exactly; valid left out of both"
+  },
+  "qm7": {
+    "target": "u0_atom (atomization energy, kcal/mol-scale)", "regime": "composition-dominated",
+    "n_train": 5464, "n_test": 684,
+    "deep_rmse_seeds": {
+      "V0": [148.14651, 149.05824, 148.82814],
+      "V2T5": [147.32043, 148.81212, 149.55559],
+      "random": [147.30164, 148.43044, 148.64516],
+      "T7": [136.81604, 138.00420, 136.21785],
+      "T7random": [137.66127, 138.77486, 137.32283],
+      "T8": [138.88995, 140.32413, 140.95386],
+      "T8random": [143.96494, 142.74034, 144.00208]
+    },
+    "deep_rmse_mean": {"V0": 148.678, "V2T5": 148.563, "random": 148.126, "T7": 137.013, "T7random": 137.920, "T8": 140.056, "T8random": 143.569},
+    "geometry_effect": {"V2T5": 0.437, "T7": -0.907, "T8": -3.513},
+    "architecture_effect": {"random": -0.552, "T7random": -10.758, "T8random": -5.109},
+    "total_vs_V0": {"T7": -11.665, "T8": -8.622},
+    "rf": {"weak11_rmse": 99.369, "weak11_std": 0.023, "strongFull_rmse": 104.909, "strongFull_std": 0.178},
+    "verdict": "RF (99-105) DOMINATES all deep arms (137-149) by ~38. T7's -11.7 gain over V0 is ~92% ARCHITECTURE (T7random alone -10.8); real geometry only -0.9. T8 splits 5.1 arch + 3.5 geom. Atomization energy ~ sum of atom contributions -> count/composition RF wins; 3D adds almost nothing."
+  },
+  "qm9mu": {
+    "target": "mu (dipole moment, Debye)", "regime": "geometry-pure",
+    "n_train": 11832, "n_test": 1473,
+    "deep_rmse_seeds": {
+      "V0": [0.98665, 1.00629, 0.98690],
+      "V2T5": [0.98905, 0.99984, 0.98664],
+      "random": [0.99827, 0.98278, 0.99616],
+      "T7": [1.00423, 0.97545, 0.99727],
+      "T7random": [0.98508, 0.98368, 0.99332],
+      "T8": [0.97649, 0.95450, 0.96818],
+      "T8random": [0.99622, 1.01226, 0.98868]
+    },
+    "deep_rmse_mean": {"V0": 0.99328, "V2T5": 0.99184, "random": 0.99240, "T7": 0.99232, "T7random": 0.98736, "T8": 0.96639, "T8random": 0.99905},
+    "geometry_effect": {"V2T5": -0.00056, "T7": 0.00496, "T8": -0.03266},
+    "architecture_effect": {"random": -0.00088, "T7random": -0.00592, "T8random": 0.00577},
+    "total_vs_V0": {"T7": -0.00096, "T8": -0.02689},
+    "rf": {"weak11_rmse": 0.9861, "weak11_std": 0.0022, "strongFull_rmse": 0.9249, "strongFull_std": 0.0017},
+    "verdict": "ONLY T8 extracts a geometry-ISOLATED signal (MMFF geometry -- see coordinate_provenance_CAVEAT, NOT DFT): T8 0.966 << T8random 0.999 ~= V0 0.993 (T8_geom -0.033, ~3.3% rel, ~3 sigma at n=3); T8 architecture alone (+0.006) does NOT help -> the gain is MMFF geometry. T7/V2T5/random ~= V0 (no geometry). BUT strong charge-aware RF (0.925) still BEATS best deep (T8 0.966) by 0.042 -> even geometry-pure mu does not break the fingerprint/descriptor ceiling. UNRESOLVED: whether true DFT coords amplify T8_geom enough to clear the RF ceiling is the Stage-2 deciding experiment, not answered here."
+  },
+  "decision_gate": {
+    "gate_a_geometry_amplifies_and_rf_not_dominant": false,
+    "gate_a_detail": "Geometry effect on mu (T8 -0.033, geometry-isolated) is CLEANER than QM7 (T8 -3.5 confounded w/ 5.1 arch), but RF still dominates deep on BOTH datasets -> gate-a fails on the RF condition.",
+    "gate_b_rf_collapses_on_mu": false,
+    "gate_b_detail": "Strong charge-RF 0.925 < deep T8 0.966 -> RF does NOT collapse; the descriptor ceiling stays above deep even on geometry-pure mu.",
+    "branch": "C (mixed): a REAL but modest, mechanism-gated (T8-only) geometry effect exists on mu, yet the fingerprint/descriptor RF ceiling remains above deep across the whole geometry-signal spectrum.",
+    "action": "Report honestly; do NOT burn big compute. Strengthens C1 (descriptor saturation) and adds a precise positive sub-finding (T8 is the only mechanism that reads real geometry, only where geometry is the whole signal)."
+  },
+  "followups_flagged_not_auto_run": [
+    "qm9gap (15k, same 7 arms): confirm T8 geometry effect is not a dipole-specific fluke -- second geometry-pure target. Low cost.",
+    "n=3 -> n=5 (add seeds 39,49) on V0/T8/T8random for mu: firm up the -0.033 (~3 sigma at n=3) effect. Low cost.",
+    "raw interatomic-distance injection (dist_to_edge_weight) vs 64-d Uni-Mol pair_repr on mu: test whether the learned pair_repr is a bottleneck for reading geometry. NEW WORK -- flag only."
+  ],
+  "paper_implication": "Across the geometry-signal spectrum (saturated ADMET [prior] -> composition QM7 -> geometry-pure QM9 dipole), a fingerprint/descriptor RF matches or beats deep 3D-injection. 3D injection extracts a geometry signal ONLY on the geometry-pure dipole and ONLY through the richest mechanism (T8 atom<->pair co-update, ~3% RMSE, geometry-isolated, ~3 sigma), and even there stays below a cheap charge-aware RF. CAVEAT: this used MMFF (not DFT) conformers; the true-DFT-coord cell is the unmade Stage-2 deciding bet. Honest diagnostic result; AAAI-readiness conditional on Stage-2."
+}

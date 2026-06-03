@@ -1,0 +1,6 @@
+node=gpu-01 CVD=0 Tue Jun  2 14:02:40 +04 2026
+[probe] === T8 with gate-fix (gates now in fast LR group) ===
+T8 rc=0
+[probe] === T8random control (geometry shuffled) ===
+T8random rc=0
+[probe] DONE Tue Jun  2 15:09:40 +04 2026

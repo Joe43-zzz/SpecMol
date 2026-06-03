@@ -1,0 +1,1022 @@
+{
+  "experiment": "Inductive-protocol sweep: pretrain_split={all,train} x arm x mode @ 1000 epochs",
+  "date": "2026-06-01",
+  "machine": "thk A6000 (GPU 0-3), conda env specmol",
+  "protocol": {
+    "pretrain_epochs": 1000,
+    "eval_seeds": [
+      9,
+      19,
+      29
+    ],
+    "batch_size": 256,
+    "K": 10,
+    "hid_dim": 512,
+    "frozen_eval_epochs": 2000,
+    "finetune": "--ft_max_epochs 40 --ft_patience 15 --ft_gate_lr 1e-2 --ft_encoder_lr 1e-4 --ft_head_lr 1e-3",
+    "pretrain_split_flag": "main_pretrain.py --pretrain_split (added 2026-06-01); 'all'=transductive (train+valid+test structures), 'train'=inductive (encoder never sees valid/test)",
+    "n_seeds": "3 init seeds on a single fixed split (variance is init-only, not split)"
+  },
+  "provenance": {
+    "runner": "run_overnight_sweep.sh (slot scheduler, 4 GPUs)",
+    "logs": "thk:~/specmol/logs/sweep_*.log",
+    "data": {
+      "bace": "down_task_bace_v2 (single Uni-Mol fold-0)",
+      "freesolv": "down_task_freesolv_unimol_v2 (513/64/65)",
+      "bbbp": "down_task_bbbp_v2 (1598/203/201; byte-identical to canonical)",
+      "bace_scaffold": "P6: per-seed DeepChem ScaffoldSplitter from dataset/bace/raw/smiles.csv"
+    }
+  },
+  "jobs": {
+    "bace_all_random_finetune": {
+      "dataset": "bace",
+      "split": "all",
+      "arm": "random",
+      "mode": "finetune",
+      "n_pretrain_mol": 1513,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        35,
+        31,
+        33
+      ],
+      "seeds": [
+        0.8685031185031185,
+        0.8808038808038808,
+        0.8683298683298682
+      ],
+      "mean": 0.8725,
+      "std": 0.0072,
+      "n": 3
+    },
+    "bace_all_T7_finetune": {
+      "dataset": "bace",
+      "split": "all",
+      "arm": "T7",
+      "mode": "finetune",
+      "n_pretrain_mol": 1513,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        10,
+        18,
+        22
+      ],
+      "seeds": [
+        0.8724878724878724,
+        0.8911988911988913,
+        0.8932778932778933
+      ],
+      "mean": 0.8857,
+      "std": 0.0115,
+      "n": 3
+    },
+    "bace_all_V0_finetune": {
+      "dataset": "bace",
+      "split": "all",
+      "arm": "V0",
+      "mode": "finetune",
+      "n_pretrain_mol": 1513,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        29,
+        33,
+        32
+      ],
+      "seeds": [
+        0.8856548856548856,
+        0.883922383922384,
+        0.8880803880803881
+      ],
+      "mean": 0.8859,
+      "std": 0.0021,
+      "n": 3
+    },
+    "bace_all_V0_frozen": {
+      "dataset": "bace",
+      "split": "all",
+      "arm": "V0",
+      "mode": "frozen",
+      "n_pretrain_mol": 1513,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        1110,
+        1217,
+        1008
+      ],
+      "seeds": [
+        0.8236313236313236,
+        0.8225918225918225,
+        0.8208593208593208
+      ],
+      "mean": 0.8224,
+      "std": 0.0014,
+      "n": 3
+    },
+    "bace_all_V2T5_finetune": {
+      "dataset": "bace",
+      "split": "all",
+      "arm": "V2T5",
+      "mode": "finetune",
+      "n_pretrain_mol": 1513,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        20,
+        14,
+        13
+      ],
+      "seeds": [
+        0.8879071379071379,
+        0.8886001386001386,
+        0.8636521136521136
+      ],
+      "mean": 0.8801,
+      "std": 0.0142,
+      "n": 3
+    },
+    "bace_all_V2T5_frozen": {
+      "dataset": "bace",
+      "split": "all",
+      "arm": "V2T5",
+      "mode": "frozen",
+      "n_pretrain_mol": 1513,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        1864,
+        1973,
+        1909
+      ],
+      "seeds": [
+        0.8737006237006237,
+        0.8776853776853776,
+        0.8735273735273735
+      ],
+      "mean": 0.875,
+      "std": 0.0024,
+      "n": 3
+    },
+    "bace_scaffold_all_V0_frozen": {
+      "dataset": "bace_scaffold",
+      "split": "all",
+      "arm": "V0",
+      "mode": "frozen",
+      "n_pretrain_mol": 1513,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        1888,
+        1961,
+        1948
+      ],
+      "seeds": [
+        0.8182663690476191,
+        0.8459939531368104,
+        0.8058007566204287
+      ],
+      "mean": 0.8234,
+      "std": 0.0206,
+      "n": 3
+    },
+    "bace_train_random_finetune": {
+      "dataset": "bace",
+      "split": "train",
+      "arm": "random",
+      "mode": "finetune",
+      "n_pretrain_mol": 1209,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        20,
+        31,
+        22
+      ],
+      "seeds": [
+        0.893970893970894,
+        0.8768191268191268,
+        0.8875606375606375
+      ],
+      "mean": 0.8861,
+      "std": 0.0087,
+      "n": 3
+    },
+    "bace_train_T7_finetune": {
+      "dataset": "bace",
+      "split": "train",
+      "arm": "T7",
+      "mode": "finetune",
+      "n_pretrain_mol": 1209,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        20,
+        11,
+        12
+      ],
+      "seeds": [
+        0.8892931392931392,
+        0.8756063756063756,
+        0.8858281358281358
+      ],
+      "mean": 0.8836,
+      "std": 0.0071,
+      "n": 3
+    },
+    "bace_train_V0_finetune": {
+      "dataset": "bace",
+      "split": "train",
+      "arm": "V0",
+      "mode": "finetune",
+      "n_pretrain_mol": 1209,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        35,
+        14,
+        13
+      ],
+      "seeds": [
+        0.879071379071379,
+        0.8811503811503811,
+        0.8646916146916147
+      ],
+      "mean": 0.875,
+      "std": 0.009,
+      "n": 3
+    },
+    "bace_train_V0_frozen": {
+      "dataset": "bace",
+      "split": "train",
+      "arm": "V0",
+      "mode": "frozen",
+      "n_pretrain_mol": 1209,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        1612,
+        1784,
+        1848
+      ],
+      "seeds": [
+        0.8707553707553708,
+        0.8762993762993763,
+        0.8752598752598753
+      ],
+      "mean": 0.8741,
+      "std": 0.0029,
+      "n": 3
+    },
+    "bace_train_V2T5_finetune": {
+      "dataset": "bace",
+      "split": "train",
+      "arm": "V2T5",
+      "mode": "finetune",
+      "n_pretrain_mol": 1209,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        20,
+        32,
+        12
+      ],
+      "seeds": [
+        0.8901593901593902,
+        0.8771656271656272,
+        0.8721413721413722
+      ],
+      "mean": 0.8798,
+      "std": 0.0093,
+      "n": 3
+    },
+    "bace_train_V2T5_frozen": {
+      "dataset": "bace",
+      "split": "train",
+      "arm": "V2T5",
+      "mode": "frozen",
+      "n_pretrain_mol": 1209,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        1864,
+        1580,
+        1635
+      ],
+      "seeds": [
+        0.852044352044352,
+        0.8529106029106029,
+        0.853083853083853
+      ],
+      "mean": 0.8527,
+      "std": 0.0006,
+      "n": 3
+    },
+    "bbbp_all_random_finetune": {
+      "dataset": "bbbp",
+      "split": "all",
+      "arm": "random",
+      "mode": "finetune",
+      "n_pretrain_mol": 2002,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        39,
+        10,
+        8
+      ],
+      "seeds": [
+        0.8248580278781621,
+        0.8506711409395973,
+        0.865771812080537
+      ],
+      "mean": 0.8471,
+      "std": 0.0207,
+      "n": 3
+    },
+    "bbbp_all_T7_finetune": {
+      "dataset": "bbbp",
+      "split": "all",
+      "arm": "T7",
+      "mode": "finetune",
+      "n_pretrain_mol": 2002,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        5,
+        10,
+        8
+      ],
+      "seeds": [
+        0.8631905007743934,
+        0.8553175012906558,
+        0.8718378936499742
+      ],
+      "mean": 0.8634,
+      "std": 0.0083,
+      "n": 3
+    },
+    "bbbp_all_V0_finetune": {
+      "dataset": "bbbp",
+      "split": "all",
+      "arm": "V0",
+      "mode": "finetune",
+      "n_pretrain_mol": 2002,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        10,
+        8,
+        39
+      ],
+      "seeds": [
+        0.8718378936499741,
+        0.8683531233866805,
+        0.8409912235415591
+      ],
+      "mean": 0.8604,
+      "std": 0.0169,
+      "n": 3
+    },
+    "bbbp_all_V0_frozen": {
+      "dataset": "bbbp",
+      "split": "all",
+      "arm": "V0",
+      "mode": "frozen",
+      "n_pretrain_mol": 2002,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        1661,
+        1115,
+        1343
+      ],
+      "seeds": [
+        0.768327310273619,
+        0.7601316468766134,
+        0.7594217862674237
+      ],
+      "mean": 0.7626,
+      "std": 0.0049,
+      "n": 3
+    },
+    "bbbp_all_V2T5_finetune": {
+      "dataset": "bbbp",
+      "split": "all",
+      "arm": "V2T5",
+      "mode": "finetune",
+      "n_pretrain_mol": 2002,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        11,
+        38,
+        33
+      ],
+      "seeds": [
+        0.8642230252968508,
+        0.8377645844088797,
+        0.8262777490965411
+      ],
+      "mean": 0.8428,
+      "std": 0.0195,
+      "n": 3
+    },
+    "bbbp_train_random_finetune": {
+      "dataset": "bbbp",
+      "split": "train",
+      "arm": "random",
+      "mode": "finetune",
+      "n_pretrain_mol": 1598,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        11,
+        9,
+        38
+      ],
+      "seeds": [
+        0.8655782137325762,
+        0.8588022715539494,
+        0.8302142488384099
+      ],
+      "mean": 0.8515,
+      "std": 0.0188,
+      "n": 3
+    },
+    "bbbp_train_T7_finetune": {
+      "dataset": "bbbp",
+      "split": "train",
+      "arm": "T7",
+      "mode": "finetune",
+      "n_pretrain_mol": 1598,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        10,
+        10,
+        8
+      ],
+      "seeds": [
+        0.8668043366029943,
+        0.8515745998967477,
+        0.8678368611254517
+      ],
+      "mean": 0.8621,
+      "std": 0.0091,
+      "n": 3
+    },
+    "bbbp_train_V0_finetune": {
+      "dataset": "bbbp",
+      "split": "train",
+      "arm": "V0",
+      "mode": "finetune",
+      "n_pretrain_mol": 1598,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        7,
+        9,
+        8
+      ],
+      "seeds": [
+        0.8642230252968508,
+        0.8635776974703149,
+        0.8649974186886938
+      ],
+      "mean": 0.8643,
+      "std": 0.0007,
+      "n": 3
+    },
+    "bbbp_train_V0_frozen": {
+      "dataset": "bbbp",
+      "split": "train",
+      "arm": "V0",
+      "mode": "frozen",
+      "n_pretrain_mol": 1598,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        1992,
+        1974,
+        1970
+      ],
+      "seeds": [
+        0.7863964894166237,
+        0.785234899328859,
+        0.7820727929788333
+      ],
+      "mean": 0.7846,
+      "std": 0.0022,
+      "n": 3
+    },
+    "bbbp_train_V2T5_finetune": {
+      "dataset": "bbbp",
+      "split": "train",
+      "arm": "V2T5",
+      "mode": "finetune",
+      "n_pretrain_mol": 1598,
+      "metric": "Auc",
+      "rc": 0,
+      "best_epochs": [
+        11,
+        10,
+        8
+      ],
+      "seeds": [
+        0.8660299432111513,
+        0.8598347960764068,
+        0.8646102219927723
+      ],
+      "mean": 0.8635,
+      "std": 0.0032,
+      "n": 3
+    },
+    "freesolv_all_random_finetune": {
+      "dataset": "freesolv",
+      "split": "all",
+      "arm": "random",
+      "mode": "finetune",
+      "n_pretrain_mol": 642,
+      "metric": "RMSE",
+      "rc": 0,
+      "best_epochs": [
+        35,
+        33,
+        21
+      ],
+      "seeds": [
+        0.6242268085479736,
+        0.6285333633422852,
+        0.638107419013977
+      ],
+      "mean": 0.6303,
+      "std": 0.0071,
+      "n": 3
+    },
+    "freesolv_all_T7_finetune": {
+      "dataset": "freesolv",
+      "split": "all",
+      "arm": "T7",
+      "mode": "finetune",
+      "n_pretrain_mol": 642,
+      "metric": "RMSE",
+      "rc": 0,
+      "best_epochs": [
+        36,
+        32,
+        37
+      ],
+      "seeds": [
+        0.6577895879745483,
+        0.6263079047203064,
+        0.6014498472213745
+      ],
+      "mean": 0.6285,
+      "std": 0.0282,
+      "n": 3
+    },
+    "freesolv_all_V0_finetune": {
+      "dataset": "freesolv",
+      "split": "all",
+      "arm": "V0",
+      "mode": "finetune",
+      "n_pretrain_mol": 642,
+      "metric": "RMSE",
+      "rc": 0,
+      "best_epochs": [
+        34,
+        32,
+        21
+      ],
+      "seeds": [
+        0.5699775218963623,
+        0.5812037587165833,
+        0.6552509665489197
+      ],
+      "mean": 0.6021,
+      "std": 0.0463,
+      "n": 3
+    },
+    "freesolv_all_V0_frozen": {
+      "dataset": "freesolv",
+      "split": "all",
+      "arm": "V0",
+      "mode": "frozen",
+      "n_pretrain_mol": 642,
+      "metric": "RMSE",
+      "rc": 0,
+      "best_epochs": [
+        1613,
+        1988,
+        1993
+      ],
+      "seeds": [
+        0.6488516926765442,
+        0.6495245099067688,
+        0.6693400144577026
+      ],
+      "mean": 0.6559,
+      "std": 0.0116,
+      "n": 3
+    },
+    "freesolv_all_V2T5_finetune": {
+      "dataset": "freesolv",
+      "split": "all",
+      "arm": "V2T5",
+      "mode": "finetune",
+      "n_pretrain_mol": 642,
+      "metric": "RMSE",
+      "rc": 0,
+      "best_epochs": [
+        35,
+        33,
+        21
+      ],
+      "seeds": [
+        0.6596173048019409,
+        0.6201779842376709,
+        0.7097961902618408
+      ],
+      "mean": 0.6632,
+      "std": 0.0449,
+      "n": 3
+    },
+    "freesolv_train_random_finetune": {
+      "dataset": "freesolv",
+      "split": "train",
+      "arm": "random",
+      "mode": "finetune",
+      "n_pretrain_mol": 513,
+      "metric": "RMSE",
+      "rc": 0,
+      "best_epochs": [
+        35,
+        39,
+        22
+      ],
+      "seeds": [
+        0.6324694156646729,
+        0.6315145492553711,
+        0.6281081438064575
+      ],
+      "mean": 0.6307,
+      "std": 0.0023,
+      "n": 3
+    },
+    "freesolv_train_T7_finetune": {
+      "dataset": "freesolv",
+      "split": "train",
+      "arm": "T7",
+      "mode": "finetune",
+      "n_pretrain_mol": 513,
+      "metric": "RMSE",
+      "rc": 0,
+      "best_epochs": [
+        35,
+        11,
+        18
+      ],
+      "seeds": [
+        0.6774695515632629,
+        0.6525283455848694,
+        0.6635855436325073
+      ],
+      "mean": 0.6645,
+      "std": 0.0125,
+      "n": 3
+    },
+    "freesolv_train_V0_finetune": {
+      "dataset": "freesolv",
+      "split": "train",
+      "arm": "V0",
+      "mode": "finetune",
+      "n_pretrain_mol": 513,
+      "metric": "RMSE",
+      "rc": 0,
+      "best_epochs": [
+        35,
+        35,
+        21
+      ],
+      "seeds": [
+        0.6429344415664673,
+        0.6357541680335999,
+        0.7181466817855835
+      ],
+      "mean": 0.6656,
+      "std": 0.0456,
+      "n": 3
+    },
+    "freesolv_train_V0_frozen": {
+      "dataset": "freesolv",
+      "split": "train",
+      "arm": "V0",
+      "mode": "frozen",
+      "n_pretrain_mol": 513,
+      "metric": "RMSE",
+      "rc": 0,
+      "best_epochs": [
+        1196,
+        1672,
+        1286
+      ],
+      "seeds": [
+        0.6738933324813843,
+        0.6563527584075928,
+        0.6429677605628967
+      ],
+      "mean": 0.6577,
+      "std": 0.0155,
+      "n": 3
+    },
+    "freesolv_train_V2T5_finetune": {
+      "dataset": "freesolv",
+      "split": "train",
+      "arm": "V2T5",
+      "mode": "finetune",
+      "n_pretrain_mol": 513,
+      "metric": "RMSE",
+      "rc": 0,
+      "best_epochs": [
+        35,
+        39,
+        22
+      ],
+      "seeds": [
+        0.677944540977478,
+        0.6100972890853882,
+        0.6527363657951355
+      ],
+      "mean": 0.6469,
+      "std": 0.0343,
+      "n": 3
+    }
+  },
+  "preliminary_300ep": {
+    "note": "earlier same-night probes at 300 epochs; SUPERSEDED by the 1000ep sweep, kept for cross-check. bace_frozen_ctrl was the dedicated frozen control.",
+    "results": {
+      "bace_ft_v0": {
+        "metric": "Auc",
+        "seeds": [
+          0.8768191268191268,
+          0.8731808731808731,
+          0.8671171171171171
+        ],
+        "mean": 0.8724,
+        "std": 0.0049,
+        "n": 3
+      },
+      "bace_ft_v2t5": {
+        "metric": "Auc",
+        "seeds": [
+          0.8721413721413721,
+          0.8766458766458767,
+          0.8624393624393624
+        ],
+        "mean": 0.8704,
+        "std": 0.0073,
+        "n": 3
+      },
+      "bace_ft_t7": {
+        "metric": "Auc",
+        "seeds": [
+          0.8778586278586278,
+          0.8830561330561331,
+          0.8816701316701316
+        ],
+        "mean": 0.8809,
+        "std": 0.0027,
+        "n": 3
+      },
+      "bace_ft_random": {
+        "metric": "Auc",
+        "seeds": [
+          0.875952875952876,
+          0.8927581427581427,
+          0.8735273735273735
+        ],
+        "mean": 0.8807,
+        "std": 0.0105,
+        "n": 3
+      },
+      "freesolv_ft_v0": {
+        "metric": "RMSE",
+        "seeds": [
+          0.5699793100357056,
+          0.5813742876052856,
+          0.6572732329368591
+        ],
+        "mean": 0.6029,
+        "std": 0.0475,
+        "n": 3
+      },
+      "freesolv_ft_v2t5": {
+        "metric": "RMSE",
+        "seeds": [
+          0.7448824644088745,
+          0.5949231386184692,
+          0.7060078978538513
+        ],
+        "mean": 0.6819,
+        "std": 0.0778,
+        "n": 3
+      },
+      "freesolv_ft_t7": {
+        "metric": "RMSE",
+        "seeds": [
+          0.6545538306236267,
+          0.6488881707191467,
+          0.616861879825592
+        ],
+        "mean": 0.6401,
+        "std": 0.0203,
+        "n": 3
+      },
+      "freesolv_ft_random": {
+        "metric": "RMSE",
+        "seeds": [
+          0.6437385082244873,
+          0.578412652015686,
+          0.6585830450057983
+        ],
+        "mean": 0.6269,
+        "std": 0.0427,
+        "n": 3
+      },
+      "bbbp_ft_v0": {
+        "metric": "Auc",
+        "seeds": [
+          0.8275684047496128,
+          0.8480898296334538,
+          0.8420237480640165
+        ],
+        "mean": 0.8392,
+        "std": 0.0105,
+        "n": 3
+      },
+      "bbbp_ft_v2t5": {
+        "metric": "Auc",
+        "seeds": [
+          0.849767681982447,
+          0.8495095508518329,
+          0.8517036654620548
+        ],
+        "mean": 0.8503,
+        "std": 0.0012,
+        "n": 3
+      },
+      "bbbp_ft_t7": {
+        "metric": "Auc",
+        "seeds": [
+          0.856350025813113,
+          0.8544140423335055,
+          0.8558337635518843
+        ],
+        "mean": 0.8555,
+        "std": 0.001,
+        "n": 3
+      },
+      "bbbp_ft_random": {
+        "metric": "Auc",
+        "seeds": [
+          0.8489932885906041,
+          0.8625451729478575,
+          0.8542849767681983
+        ],
+        "mean": 0.8553,
+        "std": 0.0068,
+        "n": 3
+      },
+      "bace_frozen_ctrl_v0": {
+        "metric": "Auc",
+        "seeds": [
+          0.843901593901594,
+          0.8322938322938322,
+          0.8298683298683299
+        ],
+        "mean": 0.8354,
+        "std": 0.0075,
+        "n": 3
+      }
+    }
+  },
+  "tables": {
+    "frozen_vs_finetune_V0": [
+      {
+        "dataset": "bace",
+        "metric": "Auc",
+        "split": "all",
+        "frozen": 0.8224,
+        "finetune": 0.8859,
+        "finetune_minus_frozen": 0.0635
+      },
+      {
+        "dataset": "bace",
+        "metric": "Auc",
+        "split": "train",
+        "frozen": 0.8741,
+        "finetune": 0.875,
+        "finetune_minus_frozen": 0.0009
+      },
+      {
+        "dataset": "bbbp",
+        "metric": "Auc",
+        "split": "all",
+        "frozen": 0.7626,
+        "finetune": 0.8604,
+        "finetune_minus_frozen": 0.0978
+      },
+      {
+        "dataset": "bbbp",
+        "metric": "Auc",
+        "split": "train",
+        "frozen": 0.7846,
+        "finetune": 0.8643,
+        "finetune_minus_frozen": 0.0797
+      },
+      {
+        "dataset": "freesolv",
+        "metric": "RMSE",
+        "split": "all",
+        "frozen": 0.6559,
+        "finetune": 0.6021,
+        "finetune_minus_frozen": -0.0538
+      },
+      {
+        "dataset": "freesolv",
+        "metric": "RMSE",
+        "split": "train",
+        "frozen": 0.6577,
+        "finetune": 0.6656,
+        "finetune_minus_frozen": 0.0079
+      }
+    ],
+    "finetune_3D_arms": [
+      {
+        "dataset": "bace",
+        "metric": "Auc",
+        "V0_all": 0.8859,
+        "V2T5_all": 0.8801,
+        "T7_all": 0.8857,
+        "random_all": 0.8725,
+        "V0_train": 0.875,
+        "V2T5_train": 0.8798,
+        "T7_train": 0.8836,
+        "random_train": 0.8861
+      },
+      {
+        "dataset": "bbbp",
+        "metric": "Auc",
+        "V0_all": 0.8604,
+        "V2T5_all": 0.8428,
+        "T7_all": 0.8634,
+        "random_all": 0.8471,
+        "V0_train": 0.8643,
+        "V2T5_train": 0.8635,
+        "T7_train": 0.8621,
+        "random_train": 0.8515
+      },
+      {
+        "dataset": "freesolv",
+        "metric": "RMSE",
+        "V0_all": 0.6021,
+        "V2T5_all": 0.6632,
+        "T7_all": 0.6285,
+        "random_all": 0.6303,
+        "V0_train": 0.6656,
+        "V2T5_train": 0.6469,
+        "T7_train": 0.6645,
+        "random_train": 0.6307
+      }
+    ]
+  },
+  "decision_gates": {
+    "gate1_inductive_preserves_conclusions": {
+      "verdict": "YES",
+      "note": "3D=random holds under both all and train (all 6 finetune cells tie within seed noise); finetune numbers barely move all->train for classification."
+    },
+    "gate2_real_finetune_vs_frozen_delta": {
+      "verdict": "+0.00 to +0.10, dataset-dependent (the '+11' was a cross-protocol artifact vs paper 0.758)",
+      "bbbp": "finetune beats frozen by +0.079..+0.097 (both protocols)",
+      "bace": "all: +0.064 ; train: +0.001 (tie)",
+      "freesolv": "all: finetune better by 0.054 RMSE ; train: finetune worse by 0.008 (tie)"
+    },
+    "gate3_leakage_magnitude_train_vs_all_finetune": {
+      "verdict": "classification ~0, FreeSolv regression moderate",
+      "bace_V0": -0.0109,
+      "bbbp_V0": 0.0039,
+      "freesolv_V0_rmse": 0.0635
+    },
+    "gate4_0758_reconciliation_P6": {
+      "verdict": "0.758 does NOT reproduce; it is an under-trained-probe artifact",
+      "P6_scaffold_3split_frozen_V0_mean": 0.8234,
+      "single_fold_frozen_V0_all_mean": 0.8224,
+      "paper_canonical": 0.758,
+      "note": "P6 reproduces the canonical protocol (3 scaffold splits, all-pretrain, frozen V0, 1000ep) -> 0.823, not 0.758. Properly-trained frozen V0 ~0.82 regardless of split."
+    }
+  },
+  "headline": "The paper's 'deep model is weak (BACE V0 0.758)' is a measurement artifact of an under-trained frozen probe -- 0.758 does not reproduce even under its own protocol (->0.823). Properly measured, deep V0 reaches BACE finetune 0.886 (~RF 0.894, tie) and BBBP finetune 0.864 (>RF 0.81). 3D injection (V2-T5/T7) = random = V0 robustly, including under the clean inductive (train-only) pretraining protocol. Transductive pretraining ('all') gives ~0 benefit to classification finetune and only a moderate FreeSolv-regression edge."
+}

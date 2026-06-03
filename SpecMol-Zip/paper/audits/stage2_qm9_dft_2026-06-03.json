@@ -1,0 +1,68 @@
+{
+  "title": "Stage-2 QM9-mu TRUE-DFT cell: 7-arm geometry/architecture decomposition + matched RF ceiling + gate-fix mechanism-completeness probe",
+  "date": "2026-06-03",
+  "branch": "codex/t7-attn-improve",
+  "machine": "MBZUAI HPC (gpu partition, RTX 5000 Ada 32GB)",
+  "question": "Does feeding Uni-Mol TRUE GDB-9 DFT coordinates (vs MMFF) make frozen 3D-pair injection beat the descriptor RF on the geometry-pure QM9 dipole? And, once the co-update gate-LR wiring is fixed so the richest mechanism actually trains, does a geometry signal appear?",
+  "provenance": {
+    "note": "All numbers are the literal 'Best Test RMSE' lines from the HPC logs (not estimates). Raw logs pulled to paper/audits/stage2_dft_logs/ when VPN is up (VPN was down at archive time 2026-06-03).",
+    "dft_build_job": "138928 (PREP_ONLY: prepare_qm9mu_dft_input.py -> Uni-Mol extract -> make; down_task_qm9mu_unimol_v2_dft/processed/qm9mu_all.pt, pair_dim=64)",
+    "dft_arm_jobs": "138929-138935 (V0/V2T5/random/T7/T7random/T8/T8random, afterok:138928), logs hpc/logs/qm9mu_dft_<ARM>.log",
+    "dft_rf_job": "139037 (qm9mu_rf_matched.py unimol_out_qm9mu_dft, ws-ia CPU), log hpc/logs/qm9mu_dft_rf2_139037.out",
+    "gatefix_probe_job": "138942 (hpc/_t8_gate_probe.sh; T8 + T8random with the gate-LR fix on MMFF QM9-mu), logs hpc/logs/qm9mu_T8{,random}_gatefix.log"
+  },
+  "protocol": {
+    "deep": "finetune, 1000 pretrain + ft_max_epochs 40 / patience 15, batch 1024, K 10, hid_dim 512, eval_seeds 9/19/29, RMSE on test split",
+    "coords": "TRUE GDB-9 DFT (B3LYP/6-31G(2df,p)) from molnet gdb9.sdf, NOT RDKit-MMFF",
+    "alignment": "Solution B: graph kept IDENTICAL to MMFF cell (from SMILES, canonical order); only the coords Uni-Mol sees change, transferred onto canonical AddHs order by generic-bond GetSubstructMatch + per-molecule physical bond-length gate (0/275354 nonphysical bonds on the retained set)",
+    "two_stage_filtering": {
+      "stage1_lookup_coverage": "14833/15000 = 98.89% have a gdb9 DFT mol (167 dropped = gdb9 RDKit-unsanitizable); reported in data/qm9/qm9_dft_alignment_report.json",
+      "stage2_reorder_pass": "12530/14833 = 84.5% pass the canonical-order coord transfer + bond gate; ~16% dropped where the published gdb9-SDF connectivity disagrees with the SMILES (genuine QM9 data ambiguity, conservatively dropped); reported in data/qm9/qm9_dft_reorder_report.json",
+      "final_cell": "prepare_qm9mu_dft_input.py embedded 12532 (train 10040 / valid 1236 / test 1256)",
+      "NOTE": "the '98.9%' and '16% dropped' are DIFFERENT stages, not a contradiction; the deep+RF cell both run on the SAME 12532/1256-test subset (matched)"
+    },
+    "rf": "qm9mu_rf_matched.py on unimol_out_qm9mu_dft (the IDENTICAL DFT subset, embed_ok only); Morgan(1024)+descriptors; RandomForestRegressor(300) seeds 9/19/29; weak11=composition desc, strongFull=full RDKit incl Gasteiger charges; geometry-blind so the comparison vs deep is on the SAME molecules"
+  },
+  "dft_cell": {
+    "target": "mu (dipole, Debye)", "regime": "geometry-pure", "n_train": 10040, "n_test": 1256,
+    "deep_rmse_seeds": {
+      "V0":       [0.8824672698974609, 0.88088458776474, 0.8761498928070068],
+      "V2T5":     [0.891471266746521, 0.8707895278930664, 0.879947304725647],
+      "random":   [0.886324942111969, 0.8717144131660461, 0.8833372592926025],
+      "T7":       [0.9041667580604553, 0.8792585134506226, 0.8961122632026672],
+      "T7random": [0.8724212050437927, 0.8762798309326172, 0.8787375688552856],
+      "T8":       [0.8845327496528625, 0.882156252861023, 0.8778249025344849],
+      "T8random": [0.8871010541915894, 0.8962199091911316, 0.8905164003372192]
+    },
+    "deep_rmse_mean": {"V0": 0.8798, "V2T5": 0.8807, "random": 0.8805, "T7": 0.8932, "T7random": 0.8758, "T8": 0.8815, "T8random": 0.8913},
+    "geometry_effect": {"V2T5": 0.0003, "T7": 0.0174, "T8": -0.0098,
+      "_def": "real - matched_random (negative = real DFT geometry helps beyond architecture)"},
+    "architecture_effect": {"random": 0.0006, "T7random": -0.0040, "T8random": 0.0115,
+      "_def": "random_arm - V0"},
+    "rf": {"weak11_rmse": 0.9387, "weak11_std": 0.0006, "strongFull_rmse": 0.8446, "strongFull_std": 0.0028},
+    "verdict": "3D injection inert even with TRUE DFT geometry. V2T5/T7 read no geometry (+0.0003 / +0.0174); T8 shows a small SHRINKING effect (-0.0098 vs MMFF -0.0327). Best real deep arm V0 0.8798 is BEATEN by charge-aware RF 0.8446 on the IDENTICAL subset (by 0.035). The descriptor ceiling holds on the geometry-pure dipole with real DFT coords. NOTE: absolute RMSE (~0.88) is lower than the MMFF pilot (~0.99) purely because of the easier 12.5k subset (V0 is geometry-free yet dropped identically) -- so MMFF-vs-DFT absolute values are NOT comparable; deep-vs-RF ON THE SAME SUBSET is the valid gate."
+  },
+  "gatefix_probe": {
+    "purpose": "close the 'T8 gates never trained' loophole: the --finetune high-LR gate group originally matched only attn_gate (T7), missing T8 node/pair/ffn_gate; fixed to GATE_SUFFIXES=(attn_gate,node_gate,pair_gate,ffn_gate). Re-run T8 + T8random on MMFF QM9-mu.",
+    "data": "down_task_qm9mu_unimol_v2 (MMFF, full 14773/1473-test)",
+    "t8_gatefix_rmse_seeds": [0.9881563186645508, 0.9816743731498718, 0.9968866109848022],
+    "t8random_gatefix_rmse_seeds": [1.0073533058166504, 0.9779939651489258, 0.9900923371315002],
+    "t8_gatefix_mean": 0.9889, "t8random_gatefix_mean": 0.9918, "geometry_effect_gatefix": -0.0029,
+    "buggy_t8_mmff_mean": 0.9664, "buggy_t8_geometry_effect": -0.0327,
+    "gates_moved": "YES: layer pair_gate reaches ~+0.30/-0.37, node_gate ~+/-0.08, ffn_gate ~+/-0.15 across the 4 layers (from init 0); the channel is now active",
+    "verdict": "DECISIVE: gates MOVE but the co-update gets WORSE (0.9889 vs buggy 0.9664) and the apparent geometry effect COLLAPSES (-0.0327 -> -0.0029). Per the pre-registered rule (gates move AND error improves => suppressed signal; gates move WITHOUT improvement => data-bound), the negative is DATA-BOUND, not a design/wiring artifact. The small MMFF 'effect' was a frozen-gate edge-weight side path, not the co-update mechanism."
+  },
+  "decision_gate": {
+    "gate_a_main_deep_beats_RF_on_same_subset": false,
+    "gate_a_detail": "best real deep DFT arm V0 0.8798 > strong charge-RF 0.8446 on the identical subset -> RF still beats deep by 0.035.",
+    "gate_b_geometry_amplifies_or_gatefix_helps": false,
+    "gate_b_detail": "DFT T8 geometry effect -0.0098 SHRANK vs MMFF -0.0327; gate-fix probe: gates move but T8 worse + geometry collapses -> no suppressed signal.",
+    "branch": "NEGATIVE (Branch B/C): frozen 3D-pair injection is inert even on the geometry-pure dipole with true DFT coords and the richest properly-trained mechanism; the descriptor/RF ceiling holds across the whole geometry-signal spectrum (ADMET -> QM7 -> QM9-mu MMFF -> QM9-mu DFT).",
+    "venue_implication": "AAAI-positive (3D genuinely helps) is dead. This is a clean, mechanism-complete NEGATIVE/boundary result; venue = ICDE-EAB / TMLR / NeurIPS D&B audit paper."
+  },
+  "caveats": [
+    "n=3 seeds (single fixed split); below the team's own n=9 retraction bar -- report with a power-bound statement, not as a strong claim.",
+    "subset confound on ABSOLUTE values: the 12.5k DFT subset is easier than the 14.8k MMFF set (V0 0.99->0.88); only the deep-vs-RF comparison ON THE SAME SUBSET is valid, NOT DFT-vs-MMFF absolute RMSE.",
+    "the 3D 'instrument' is a non-equivariant spectral backbone reading geometry via a coordinate-free pair/edge-weight path; generality to equivariant encoders (DimeNet/EGNN) is untested."
+  ]
+}

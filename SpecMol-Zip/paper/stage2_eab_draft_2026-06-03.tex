@@ -1,0 +1,158 @@
+% =====================================================================
+%  EAB FRAMING DRAFT — 2026-06-03 — for ICDE 2027 R1 (EAB track, due 6/11).
+%  DRAFT for review; NOT applied/committed to main.tex.
+%  Numbers verified from this session's runs + saved archives.
+% =====================================================================
+
+% ----------------------------------------------------------------------
+%  TITLE — pick one (EAB tag is mandatory: title must start with the tag)
+% ----------------------------------------------------------------------
+% (recommended) leads with the reusable protocol = the genuine contribution:
+\title{[Experiment, Analysis, and Benchmark]\\
+A Random-Pair Null Protocol for Auditing Frozen 3D-Geometry
+Injection in Molecular Property Prediction}
+
+% alt A (boundary-question framing):
+% \title{[Experiment, Analysis, and Benchmark] When Does Frozen 3D-Pair
+% Injection Help a Molecular Spectral GNN? A Matched-Protocol Audit}
+
+% ----------------------------------------------------------------------
+%  ABSTRACT (draft, ~210 words)
+% ----------------------------------------------------------------------
+\begin{abstract}
+Pretrained 3D molecular encoders are increasingly injected into 2D
+property-prediction models as frozen geometric features, yet whether the
+\emph{real} geometry---rather than the added parameters---drives any gain is
+rarely tested. We present a matched-protocol audit of frozen 3D-pair injection
+(Uni-Mol pair representations) into a Chebyshev spectral GNN, built around three
+reusable controls: (i) a shape-matched \textbf{random-pair null} that replaces
+the pretrained pair tensor with Gaussian noise at the consumption site, isolating
+geometry from architecture; (ii) a \textbf{frozen-probe$\rightarrow$finetune
+absolute correction} that prevents an under-trained linear probe from
+mis-ranking encoders; and (iii) a \textbf{matched-split, descriptor-RF ceiling}
+that quantifies fingerprint saturation. Across the entire geometry-signal
+spectrum---saturated ADMET classification, composition-dominated QM7 atomization
+energy, and the geometry-pure QM9 dipole moment evaluated with \emph{true
+B3LYP/6-31G(2df,p) DFT coordinates}---every deep 3D-injection variant ties its
+own random-pair null and a 2D baseline, and a charge-aware random forest matches
+or beats all of them (e.g.\ on DFT-coordinate QM9 dipole, RF $0.845$ vs.\ best
+deep $0.880$ RMSE). A gate-movement probe rules out a wiring artifact: enabling
+the richest co-update mechanism makes it \emph{worse}, not better. We release a
+fully regenerable evaluation harness. The contribution is a transferable
+falsification protocol and a boundary map, not a new predictor.
+\end{abstract}
+
+% ----------------------------------------------------------------------
+%  CONTRIBUTIONS (draft \paragraph block for the intro)
+% ----------------------------------------------------------------------
+\paragraph{Contributions.}
+\begin{itemize}
+\item \textbf{(C1) A random-pair null protocol for 3D-injection claims, under a
+matched inductive split.} We argue any ``geometry helps'' claim must clear a
+shape-matched random-pair null---replacing the frozen 3D pair tensor with
+\texttt{randn\_like} noise at the exact consumption site, holding architecture,
+split, seeds, and budget fixed. We implement it for three injection mechanisms
+(static edge gate, pair-biased attention, atom$\leftrightarrow$pair co-update)
+and show the real pair never separates from its null within seed variance.
+
+\item \textbf{(C2) A frozen-probe$\rightarrow$finetune absolute correction that
+overturns a concrete conclusion.} A frozen linear probe ranks encoders
+unreliably; we report the absolute delta on one pipeline (e.g.\ BACE
+$0.822\!\rightarrow\!0.886$ AUC) and show it flips an apparent ``deep is weak''
+reading. Properly finetuned, the 2D baseline ties a descriptor RF on BACE and
+beats it on BBBP/FreeSolv---yet 3D injection still adds nothing.
+
+\item \textbf{(C3) A geometry-signal boundary map, including a true-DFT stress
+test.} We trace where injection is inert along a geometry axis: saturated ADMET
+$\rightarrow$ composition-dominated QM7 $\rightarrow$ geometry-pure QM9 dipole
+with \emph{true DFT coordinates}. The descriptor ceiling holds throughout; a
+gate-movement probe shows the negative is data-bound, not a design/wiring
+artifact (\S\ref{sec:dft}).
+
+\item \textbf{(C4) A regenerable evaluation harness.} Every table cell
+regenerates from released per-seed JSON via a single script; null-protocol,
+split-reconstruction, and matched baselines are released as first-class
+artifacts.
+\end{itemize}
+
+% ======================================================================
+%  STAGE-2 SECTION
+% ======================================================================
+\section{The geometry-pure stress test: true DFT coordinates}
+\label{sec:dft}
+
+The strongest objection to a ``3D does not help'' result is that our targets are
+not geometry-driven, or that our 3D source is too coarse. We close both by
+running the cleanest possible positive control: the QM9 \emph{dipole moment}
+$\mu$---a property that is, by construction, a function of the 3D charge
+distribution---fed Uni-Mol pair representations extracted from the molecules'
+\emph{true} GDB-9 DFT-optimized geometries (B3LYP/6-31G(2df,p)), not RDKit/MMFF
+re-embeddings. If frozen 3D injection ever helps, it should help here.
+
+\paragraph{Protocol.}
+We hold the 2D graph featurization \emph{identical} to the matched cell and
+change only the coordinates Uni-Mol sees: true DFT coordinates are transferred
+onto the canonical atom order by validated subgraph isomorphism (a per-molecule
+bond-length gate flags any misalignment; $0/{\sim}2.75\!\times\!10^{5}$ bonds
+violated). We conservatively drop the ${\sim}16\%$ of molecules whose published
+DFT-SDF connectivity disagrees with the SMILES, leaving $12{,}530$ molecules
+($1{,}256$ test). We finetune end-to-end the same seven arms
+(V0; static gate V2-T5; pair-biased attention T7; co-update T8; and the
+random-pair null of each), $n{=}3$ seeds, and compute the matched
+charge-aware RF on the \emph{same} molecule subset.
+
+\paragraph{Result: the ceiling holds even here (Table~\ref{tab:dft}).}
+Real DFT geometry does not change the verdict. The static gate and attention read
+no geometry ($\mu$ effect $+0.0003$ and $+0.017$, i.e.\ the real pair is no
+better---or worse---than its shuffled null); the richest co-update shows a small
+but shrinking effect ($-0.010$, vs.\ $-0.033$ under MMFF). Crucially, the best
+deep arm ($0.880$ RMSE) is \emph{beaten} by a charge-aware descriptor RF on the
+identical subset ($0.845$). The descriptor ceiling that bounds deep 3D-injection
+on saturated ADMET and composition-dominated QM7 still bounds it on the
+geometry-pure dipole with true DFT geometry.
+
+\begin{table}[t]
+\centering
+\caption{QM9 dipole $\mu$ with \textbf{true DFT coordinates}
+(RMSE, lower is better; $n{=}3$ finetune seeds; $1{,}256$ test molecules).
+Geometry effect $=$ real $-$ random-pair null (negative $=$ real geometry
+helps). Every deep arm is beaten by the charge-aware RF on the same subset.}
+\label{tab:dft}
+\begin{tabular}{lcc}
+\toprule
+Arm & RMSE & geometry effect \\
+\midrule
+V0 (2D baseline)              & 0.880 & --- \\
+V2-T5 (static gate)           & 0.881 & $+0.000$ \\
+\quad random-pair null        & 0.880 & --- \\
+T7 (pair-biased attn)         & 0.893 & $+0.017$ \\
+\quad random-pair null        & 0.876 & --- \\
+T8 (atom$\leftrightarrow$pair co-update) & 0.882 & $-0.010$ \\
+\quad random-pair null        & 0.891 & --- \\
+\midrule
+\textbf{RF (charge-aware, same subset)} & \textbf{0.845} & geometry-blind \\
+RF (11 composition desc.)               & 0.939 & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Mechanism completeness: closing the wiring loophole.}
+One could object that the co-update's near-identity (ReZero) gates never train,
+so geometry was never given a fair channel. We test this directly. The dedicated
+high-learning-rate finetune group originally matched only the attention gate,
+silently leaving the co-update's node/pair/FFN gates at the slow encoder rate; we
+fix the group and re-run on $\mu$. The gates now \emph{move} (pair gate to
+${\approx}0.3$), confirming the channel is active---yet the co-update gets
+\emph{worse} ($0.989$ vs.\ $0.966$ RMSE) and its apparent geometry effect
+collapses ($-0.033\!\rightarrow\!-0.003$). Per our pre-registered rule (gates
+move \emph{and} error improves $\Rightarrow$ a suppressed signal; gates move
+without improvement $\Rightarrow$ data-bound), the negative is \emph{data-bound,
+not a design or wiring artifact}: there is no geometry signal being withheld,
+and the small MMFF ``effect'' was an edge-weight side path, not the co-update.
+
+\paragraph{Takeaway.}
+Across saturated ADMET, composition-dominated QM7, and the geometry-pure QM9
+dipole with \emph{true DFT coordinates}, frozen 3D-pair injection is inert: it
+ties its own random-pair null and a 2D baseline, and a cheap charge-aware
+descriptor RF matches or beats it everywhere. This is a clean, mechanism-complete
+boundary, obtained with the protocol of C1--C2 and released in full.

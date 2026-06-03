@@ -31,3 +31,11 @@ mlp_phi_stats/*_scratch.json
 _smoke*.json
 _baselines_*_TMP.json
 SpecMol-Zip/main_pretrain.py.MERGED_BACKUP
+
+# large regenerable QM9 binaries (2026-06-03)
+data/qm9/raw/
+data/qm9/*.pkl
+data/qm9/qm9.zip
+unimol_out_qm9mu_dft/sdf/
+unimol_out_qm9mu/qm9.csv
+paper/_aux/

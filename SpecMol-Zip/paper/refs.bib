@@ -399,3 +399,315 @@
   note      = {Linear-probe gain from deeper/wider backbones is disproportionately larger under contrastive SSL than supervised training.},
   url       = {https://arxiv.org/abs/2002.05709}
 }
+
+% ===========================================================================
+% Experimental molecular spectra x structure (MS / NMR / IR) -- related work.
+% Web-verified 2026-06-01 (titles/venues/years). Author lists marked "and
+% others" where full lists were not individually confirmed; verify before
+% camera-ready (esp. shen2025specmol: possible v1 title "MolSpectLLM").
+% ===========================================================================
+
+@article{wei2019neims,
+  title   = {Rapid Prediction of Electron--Ionization Mass Spectrometry Using Neural Networks},
+  author  = {Wei, Jennifer N. and Belanger, David and Adams, Ryan P. and Sculley, D.},
+  journal = {ACS Central Science},
+  volume  = {5}, number = {4}, pages = {700--708}, year = {2019},
+  note    = {NEIMS; arXiv:1811.08545},
+  url     = {https://doi.org/10.1021/acscentsci.9b00085}
+}
+
+@article{young2024massformer,
+  title   = {Tandem mass spectrum prediction for small molecules using graph transformers},
+  author  = {Young, Adamo and R{\"o}st, Hannes and Wang, Bo},
+  journal = {Nature Machine Intelligence},
+  volume  = {6}, pages = {404--416}, year = {2024},
+  note    = {MassFormer; arXiv:2111.04824},
+  url     = {https://doi.org/10.1038/s42256-024-00816-8}
+}
+
+@article{goldman2024iceberg,
+  title   = {Generating Molecular Fragmentation Graphs with Autoregressive Neural Networks},
+  author  = {Goldman, Samuel and Li, Janet and Coley, Connor W.},
+  journal = {Analytical Chemistry},
+  volume  = {96}, number = {8}, pages = {3419--3428}, year = {2024},
+  note    = {ICEBERG; arXiv:2304.13136},
+  url     = {https://doi.org/10.1021/acs.analchem.3c04654}
+}
+
+@inproceedings{murphy2023graffms,
+  title     = {Efficiently predicting high resolution mass spectra with graph neural networks},
+  author    = {Murphy, Michael and Jegelka, Stefanie and Fraenkel, Ernest and Kind, Tobias and Healey, David and Butler, Thomas},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {2023},
+  note      = {GRAFF-MS; arXiv:2301.11419},
+  url       = {https://arxiv.org/abs/2301.11419}
+}
+
+@inproceedings{goldman2023scarf,
+  title     = {Prefix-Tree Decoding for Predicting Mass Spectra from Molecules},
+  author    = {Goldman, Samuel and Bradshaw, John and Xin, Janet and Coley, Connor W.},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2023},
+  note      = {SCARF; arXiv:2303.06470},
+  url       = {https://arxiv.org/abs/2303.06470}
+}
+
+@article{nowatzky2025fiora,
+  title   = {{FIORA}: Local neighborhood-based prediction of compound mass spectra from single fragmentation events},
+  author  = {Nowatzky, Yannek and others},
+  journal = {Nature Communications},
+  volume  = {16}, pages = {2298}, year = {2025},
+  url     = {https://doi.org/10.1038/s41467-025-57422-4}
+}
+
+@article{mcgill2021chempropir,
+  title   = {Predicting Infrared Spectra with Message Passing Neural Networks},
+  author  = {McGill, Charles and Forsuelo, Michael and Guan, Yanfei and Green, William H.},
+  journal = {Journal of Chemical Information and Modeling},
+  volume  = {61}, number = {6}, pages = {2594--2609}, year = {2021},
+  note    = {Chemprop-IR},
+  url     = {https://doi.org/10.1021/acs.jcim.1c00055}
+}
+
+@article{jonas2019rapidnmr,
+  title   = {Rapid prediction of {NMR} spectral properties with quantified uncertainty},
+  author  = {Jonas, Eric and Kuhn, Stefan},
+  journal = {Journal of Cheminformatics},
+  volume  = {11}, pages = {50}, year = {2019},
+  url     = {https://doi.org/10.1186/s13321-019-0374-3}
+}
+
+@article{kwon2020nmrmpnn,
+  title   = {Neural Message Passing for {NMR} Chemical Shift Prediction},
+  author  = {Kwon, Youngchun and Lee, Dongseon and Choi, Youn-Suk and Kang, Myeonginn and Kang, Seokho},
+  journal = {Journal of Chemical Information and Modeling},
+  volume  = {60}, number = {4}, pages = {2024--2030}, year = {2020},
+  url     = {https://doi.org/10.1021/acs.jcim.0c00195}
+}
+
+@article{duhrkop2015csifingerid,
+  title   = {Searching molecular structure databases with tandem mass spectra using {CSI:FingerID}},
+  author  = {D{\"u}hrkop, Kai and Shen, Huibin and Meusel, Marvin and Rousu, Juho and B{\"o}cker, Sebastian},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {112}, number = {41}, pages = {12580--12585}, year = {2015},
+  url     = {https://doi.org/10.1073/pnas.1509788112}
+}
+
+@article{goldman2023mist,
+  title   = {Annotating metabolite mass spectra with domain-inspired chemical formula transformers},
+  author  = {Goldman, Samuel and Wohlwend, Jeremy and Stra{\v{z}}ar, Martin and Haroush, Guy and Xavier, Ramnik J. and Coley, Connor W.},
+  journal = {Nature Machine Intelligence},
+  volume  = {5}, pages = {965--979}, year = {2023},
+  note    = {MIST; introduces the NPLIB1 benchmark},
+  url     = {https://doi.org/10.1038/s42256-023-00708-3}
+}
+
+@inproceedings{bohde2025diffms,
+  title     = {{DiffMS}: Diffusion Generation of Molecules Conditioned on Mass Spectra},
+  author    = {Bohde, Montgomery and Manjrekar, Mrunali and Wang, Runzhong and Ji, Shuiwang and Coley, Connor W.},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {2025},
+  note      = {arXiv:2502.09571},
+  url       = {https://arxiv.org/abs/2502.09571}
+}
+
+@inproceedings{wang2025madgen,
+  title     = {{MADGEN}: Mass-Spec attends to De Novo Molecular generation},
+  author    = {Wang, Yinkai and Chen, Xiaohui and Liu, Liping and Hassoun, Soha},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2025},
+  note      = {arXiv:2501.01950},
+  url       = {https://arxiv.org/abs/2501.01950}
+}
+
+@article{hu2024nmrmultitask,
+  title   = {Accurate and Efficient Structure Elucidation from Routine One-Dimensional {NMR} Spectra Using Multitask Machine Learning},
+  author  = {Hu, Frank and Chen, Michael S. and Rotskoff, Grant M. and Kanan, Matthew W. and Markland, Thomas E.},
+  journal = {ACS Central Science},
+  year    = {2024},
+  note    = {DOI: 10.1021/acscentsci.4c01132},
+  url     = {https://doi.org/10.1021/acscentsci.4c01132}
+}
+
+@article{kalia2024jestr,
+  title   = {{JESTR}: Joint Embedding Space Technique for Ranking Candidate Molecules for the Annotation of Untargeted Metabolomics Data},
+  author  = {Kalia, Apurva and others},
+  journal = {arXiv preprint arXiv:2411.14464},
+  year    = {2024},
+  url     = {https://arxiv.org/abs/2411.14464}
+}
+
+@article{kanakala2024spectra2structure,
+  title   = {Spectra to structure: contrastive learning framework for library ranking and generating molecular structures for infrared spectra},
+  author  = {Kanakala, Gunaganti Chaitanya and Sridharan, Bhuvanesh and Priyakumar, U. Deva},
+  journal = {Digital Discovery},
+  year    = {2024},
+  note    = {DOI: 10.1039/D4DD00135D},
+  url     = {https://doi.org/10.1039/D4DD00135D}
+}
+
+@inproceedings{bushuiev2024massspecgym,
+  title     = {{MassSpecGym}: A benchmark for the discovery and identification of molecules},
+  author    = {Bushuiev, Roman and others},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS) Datasets and Benchmarks Track},
+  year      = {2024},
+  note      = {arXiv:2410.23326},
+  url       = {https://arxiv.org/abs/2410.23326}
+}
+
+@inproceedings{alberts2024multimodalspec,
+  title     = {Unraveling Molecular Structure: A Multimodal Spectroscopic Dataset for Chemistry},
+  author    = {Alberts, Marvin and Schilter, Oliver and Zipoli, Federico and Hartrampf, Nina and Laino, Teodoro},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS) Datasets and Benchmarks Track},
+  year      = {2024},
+  note      = {arXiv:2407.17492},
+  url       = {https://arxiv.org/abs/2407.17492}
+}
+
+@article{wang2025diffspectra,
+  title   = {{DiffSpectra}: Molecular Structure Elucidation from Spectra using Diffusion Models},
+  author  = {Wang, Liang and Rong, Yu and Xu, Tingyang and others},
+  journal = {arXiv preprint arXiv:2507.06853},
+  year    = {2025},
+  url     = {https://arxiv.org/abs/2507.06853}
+}
+
+@article{shen2025specmol,
+  title   = {{SpecMol}: A Spectroscopy-Grounded Foundation Model for Multi-Task Molecular Learning},
+  author  = {Shen, Shuaike and Xie, Jiaqing and Yang, Zhuo and Zhang, Antong and Sun, Shuzhou and Gao, Ben and Fu, Tianfan and Qi, Biqing and Li, Yuqiang},
+  journal = {arXiv preprint arXiv:2509.21861},
+  year    = {2025},
+  note    = {Name collision with the present project; distinct concurrent work (experimental-spectra foundation model, not a spectral-graph audit).},
+  url     = {https://arxiv.org/abs/2509.21861}
+}
+
+% ===========================================================================
+% Critical audits / fingerprint-saturation lineage and 3D-utility negative
+% controls (scoop-check 2026-06-01). Web-verified title/authors/year.
+% ===========================================================================
+
+@inproceedings{xia2023whydeep,
+  title     = {Why Deep Models Often cannot Beat Non-deep Counterparts on Molecular Property Prediction?},
+  author    = {Xia, Jun and Zhang, Lecheng and Zhu, Xiao and Li, Stan Z.},
+  booktitle = {ICML Workshop on Computational Biology / Interpretable ML in Healthcare (Spotlight)},
+  year      = {2023},
+  note      = {arXiv:2306.17702},
+  url       = {https://arxiv.org/abs/2306.17702}
+}
+
+@article{praski2025embedding,
+  title   = {Benchmarking Pretrained Molecular Embedding Models For Molecular Representation Learning},
+  author  = {Praski, Mateusz and Adamczyk, Jakub and Czech, Wojciech},
+  journal = {arXiv preprint arXiv:2508.06199},
+  year    = {2025},
+  note    = {Frozen-embedding probe of 25 pretrained models incl.\ Uni-Mol vs.\ ECFP; neural/3D gains negligible.},
+  url     = {https://arxiv.org/abs/2508.06199}
+}
+
+@article{vantilborg2022cliffs,
+  title   = {Exposing the Limitations of Molecular Machine Learning with Activity Cliffs},
+  author  = {van Tilborg, Derek and Alenicheva, Alisa and Grisoni, Francesca},
+  journal = {Journal of Chemical Information and Modeling},
+  volume  = {62}, number = {23}, pages = {5938--5951}, year = {2022},
+  note    = {MoleculeACE benchmark; descriptor ML beats deep learning around activity cliffs.},
+  url     = {https://doi.org/10.1021/acs.jcim.2c01073}
+}
+
+@article{hamakawa2025conformation,
+  title   = {Understanding Conformation Importance in Data-Driven Property Prediction Models},
+  author  = {Hamakawa, Yu and Miyao, Tomoyuki},
+  journal = {Journal of Chemical Information and Modeling},
+  year    = {2025},
+  note    = {Matched ``wrong-conformer'' negative control on Uni-Mol; geometry IS used (finetuned, QM targets). Verify exact volume/DOI before camera-ready.},
+  url     = {https://pubs.acs.org/journal/jcisd8}
+}
+
+% ===========================================================================
+% Scoping must-cites: pair-bias attention (T7/T8 carry no novelty), edge-gated
+% spectral (no edge-gating novelty), through-space contact edges (KA-GNN), and
+% closest frozen-3D-injection competitors (SCAGE, 3D-PGT). Metadata migrated
+% from specmol_litreview_aaai{,_round2}.bib and specmol_litreview_new.bib
+% (web-verified 2026-06-01); reported numbers are split-confounded across
+% papers -- cite for mechanism/positioning, NOT for head-to-head AUC.
+% ===========================================================================
+
+@inproceedings{ying2021graphormer,
+  title     = {Do Transformers Really Perform Bad for Graph Representation?},
+  author    = {Ying, Chengxuan and Cai, Tianle and Luo, Shengjie and Zheng, Shuxin and Ke, Guolin and He, Di and Shen, Yanming and Liu, Tie-Yan},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2021},
+  eprint    = {2106.05234},
+  archivePrefix = {arXiv},
+  note      = {Graphormer: shortest-path / edge encodings added as additive bias to attention logits; 2D, from scratch. The pair-as-attention-bias mechanism our T7 rung reuses (no novelty there).},
+  url       = {https://arxiv.org/abs/2106.05234}
+}
+
+@article{maziarka2020mat,
+  title   = {Molecule Attention Transformer},
+  author  = {Maziarka, {\L}ukasz and Danel, Tomasz and Mucha, S{\l}awomir and Rataj, Krzysztof and Tabor, Jacek and Jastrz{\k{e}}bski, Stanis{\l}aw},
+  journal = {arXiv preprint arXiv:2002.08264},
+  year    = {2020},
+  note    = {MAT: trainable inter-atomic distance matrix + adjacency added as attention bias, end-to-end; BBBP 0.728, ESOL 0.285, FreeSolv 0.263. Conceptual ancestor of T7's pair-bias; raw trainable distance, no frozen external 3D encoder, no random-pair control.},
+  url     = {https://arxiv.org/abs/2002.08264}
+}
+
+@inproceedings{hussain2022egt,
+  title     = {Edge-augmented Graph Transformers: Global Self-attention is Enough for Graphs},
+  author    = {Hussain, Md Shamim and Zaki, Mohammed J. and Subramanian, Dharmashankar},
+  booktitle = {ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD)},
+  year      = {2022},
+  note      = {EGT: dedicated all-pairs $N\times N$ edge channels with sigmoid-gated value aggregation, updated through MHA, end-to-end; PCQM4Mv2 SOTA. Same gated all-pairs pair object T7 injects, but learned end-to-end and unaudited. Venue verified (KDD 2022); confirm arXiv/DOI before camera-ready.}
+}
+
+@inproceedings{bo2021fagcn,
+  title     = {Beyond Low-frequency Information in Graph Convolutional Networks},
+  author    = {Bo, Deyu and Wang, Xiao and Shi, Chuan and Shen, Huawei},
+  booktitle = {AAAI Conference on Artificial Intelligence (AAAI)},
+  year      = {2021},
+  eprint    = {2101.00797},
+  archivePrefix = {arXiv},
+  note      = {FAGCN: per-edge scalar gate in $[-1,1]$ self-gating a mix of low-pass and high-pass propagation. Direct antecedent of V2-T5's scalar edge gate and the dual low/high-pass design; not molecules, not 3D, no frozen source.},
+  url       = {https://arxiv.org/abs/2101.00797}
+}
+
+@inproceedings{bo2023specformer,
+  title     = {Specformer: Spectral Graph Neural Networks Meet Transformers},
+  author    = {Bo, Deyu and Shi, Chuan and Wang, Lele and Liao, Renjie},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023},
+  eprint    = {2303.01028},
+  archivePrefix = {arXiv},
+  note      = {Specformer: set-to-set spectral filter learned with a Transformer over eigenvalues. Establishes that learned spectral filtering on graphs is a mature line; the spectral/Chebyshev backbone is not our contribution.},
+  url       = {https://arxiv.org/abs/2303.01028}
+}
+
+@article{li2025kagnn,
+  title   = {Kolmogorov--Arnold graph neural networks for molecular property prediction},
+  author  = {Li, Longlong and others},
+  journal = {Nature Machine Intelligence},
+  volume  = {7},
+  pages   = {1346--1354},
+  year    = {2025},
+  doi     = {10.1038/s42256-025-01087-7},
+  note    = {KA-GNN: 2D message passing + Fourier-KAN layers + 5\,\AA{} through-space ``contact'' edges; BACE 0.890 ($\approx$ RF), BBBP 0.787, no pretraining. Owns the through-space contact-edge mechanism, so our contact-edge rung is only a null demo, not novelty.},
+  url     = {https://doi.org/10.1038/s42256-025-01087-7}
+}
+
+@inproceedings{wang2023threedpgt,
+  title     = {Automated 3D Pre-Training for Molecular Property Prediction},
+  author    = {Wang, Xu and Zhao, Huan and Tu, Wei-wei and Yao, Quanming},
+  booktitle = {ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD)},
+  year      = {2023},
+  note      = {3D-PGT: multi-task 3D-geometry generative pretraining (bond length / angle / dihedral) on a GPS backbone, then 2D-only inference; BACE 0.809. Distills geometry into weights at pretrain; we instead inject a frozen pair at inference and add a random-pair null. Venue verified (KDD 2023); confirm arXiv/DOI before camera-ready.}
+}
+
+@article{qiao2025scage,
+  title   = {A Self-Conformation-Aware Pre-training Framework for Molecular Property Prediction with Substructure Interpretability},
+  author  = {Qiao, Jianbo and Jin, Junru and Wang, Di and others},
+  journal = {Nature Communications},
+  volume  = {16},
+  pages   = {4382},
+  year    = {2025},
+  note    = {SCAGE: 2D+3D multi-task pretraining with distance-masked attention and a fingerprint-prediction objective on 5M MMFF conformers, end-to-end finetune; BACE 0.854, BBBP 0.734. Closest competitor: trains THROUGH the frozen-injection regime we isolate, with no frozen-source, no random-pair null, no frozen-probe-vs-finetune correction. VERIFY exact volume / article-number / DOI before camera-ready (vol/pages migrated from litreview, not independently re-confirmed).},
+  url       = {https://www.nature.com/ncomms/}
+}

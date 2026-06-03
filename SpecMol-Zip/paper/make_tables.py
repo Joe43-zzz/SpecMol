@@ -176,6 +176,8 @@ def parse_bace_full(data: dict) -> dict[str, tuple[float, float]]:
         "v2_t5": "V2-T5",
         "t6": "T6",
         "t7": "T7",  # bare-T7 from S1 (collector output, same schema as v2t5)
+        "t8": "T8",
+        "t8_logits": "T8-logits",
         "fp_only": "FP-only",
     }
     for variant_key, label in key_aliases.items():
@@ -233,6 +235,8 @@ def parse_regression_matrix(task: str) -> dict[str, tuple[float, float]]:
         ("V2-T5", v2_name),
         ("T6", f"{task}_t6_results.json"),
         ("T7", f"{task}_t7_bare_results.json"),
+        ("T8", f"{task}_t8_results.json"),
+        ("T8-logits", f"{task}_t8_logits_results.json"),
     ]
     out: dict[str, tuple[float, float]] = {}
     for label, fname in sources:
@@ -251,7 +255,7 @@ def render_cls_table(bbbp: dict, bace: dict,
     Includes ClinTox/Tox21 columns when data is present; falls back to the
     original 2-column layout otherwise.
     """
-    variants = ["V0", "FP-only", "RF", "Chemprop", "Uni-Mol", "V2-T5", "T7"]
+    variants = ["V0", "FP-only", "RF", "Chemprop", "Uni-Mol", "V2-T5", "T7", "T8", "T8-logits"]
     clintox = clintox or {}
     tox21 = tox21 or {}
     has_ctox = bool(clintox)
@@ -306,7 +310,7 @@ def render_reg_table(freesolv: dict,
 
     Includes ESOL/Lipo columns when data is present; FreeSolv-only otherwise.
     """
-    variants = ["V0", "RF", "Chemprop", "Uni-Mol", "V2-T5", "T7"]
+    variants = ["V0", "RF", "Chemprop", "Uni-Mol", "V2-T5", "T7", "T8", "T8-logits"]
     esol = esol or {}
     lipo = lipo or {}
     has_esol = bool(esol)
@@ -331,8 +335,8 @@ def render_reg_table(freesolv: dict,
         "\\caption{Regression test RMSE (lower is better; mean $\\pm$ sample std "
         "over per-seed means under matched scaffold splits). FreeSolv V0/V2-T5 use "
         "$n{=}9$ seeds; ESOL/Lipo deep cells and T7 use $n{=}3$; RF uses $n{=}30$. "
-        "ESOL/Lipo V2-T5 use Uni-Mol pair representations; FreeSolv V2-T5/T7 use an "
-        "RDKit-GBF pair surrogate (\\S\\ref{sec:v2t5}). RMSE is on the standardized "
+        "all V2-T5 cells (FreeSolv/ESOL/Lipo) use Uni-Mol pair representations; the "
+        "FreeSolv T7 cell alone uses an RDKit-GBF pair surrogate (\\S\\ref{sec:v2t5}). RMSE is on the standardized "
         "label scale (std${\\approx}1$ for all three regression sets; FreeSolv is thus not in kcal/mol).}",
         "\\label{tab:regression}",
         f"\\begin{{tabular}}{{{col_spec}}}",
@@ -423,7 +427,7 @@ def render_main_table(bbbp: dict, bace: dict, freesolv: dict) -> str:
         "\\caption{Main results. Classification reports AUC ($\\uparrow$); regression reports RMSE ($\\downarrow$). "
         "Deep cells are mean~$\\pm$~sample std over training seeds: BBBP and FreeSolv V0/V2-T5 use $n{=}9$, "
         "BBBP T7 and BACE/ClinTox/ESOL/Lipo deep cells use $n{=}3$, and RF uses the 30-seed protocol of \\citet{deng2023systematic}. "
-        "FreeSolv V2-T5/T7 use an RDKit-GBF pair surrogate; the other V2-T5 cells use Uni-Mol pair representations.}",
+        "the FreeSolv T7 cell alone uses an RDKit-GBF pair surrogate; all V2-T5 cells use Uni-Mol pair representations.}",
         "\\label{tab:main}",
         "\\begin{tabular}{lccc}",
         "\\toprule",
@@ -529,6 +533,19 @@ def main() -> None:
             t7_seeds = _freesolv_per_seed(t7_raw)
             if t7_seeds:
                 table["T7"] = _stats(t7_seeds)
+
+    # Bare-T8 (HPC collector output, classification), same schema as bare-T7.
+    for table, json_name in (
+        (bbbp, "bbbp_t8_bare_results.json"),
+        (bace, "bace_t8_bare_results.json"),
+        (clintox, "clintox_t8_bare_results.json"),
+    ):
+        if "T8" in table:
+            continue
+        t8_raw = load(json_name)
+        t8_stats = parse_t7_collect_format(t8_raw) if t8_raw else None
+        if t8_stats is not None:
+            table["T8"] = t8_stats
 
     # Tox21 is deferred from the 6-dataset matrix (Uni-Mol pair extraction
     # OOMs on its 7,831 molecules); we do not render a Tox21 column even
