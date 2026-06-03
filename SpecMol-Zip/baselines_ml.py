@@ -83,6 +83,13 @@ DATASETS = {
         "split_col": None,
         "task": "regression",
     },
+    "qm7": {
+        "csv": "dataset/qm7/raw/smiles.csv",
+        "smiles_col": 0,  # no header (column 0 = SMILES, column 1 = u0_atom)
+        "label_col": 1,
+        "split_col": None,
+        "task": "regression",
+    },
     # Multi-label classification: label_col is a list of column indices/names.
     # Aggregated metric reported in mean/std is macro_roc_auc; per-task numbers
     # are kept in the per-seed payload for transparency.
@@ -121,8 +128,14 @@ def rdkit2d(mol):
     return np.array([fns[n](mol) for n in RDKIT2D_DESCRIPTORS], dtype=np.float32)
 
 
-def featurize(smiles_list):
-    """Returns (X, ok) where ok is per-input mask (len == len(smiles_list))."""
+def featurize(smiles_list, feature_mode="full"):
+    """Returns (X, ok) where ok is per-input mask (len == len(smiles_list)).
+
+    feature_mode: 'full' (Morgan 1024 + 11 RDKit2D, default = original behavior),
+    'fp_only' (Morgan only), 'desc_only' (RDKit2D continuous descriptors only).
+    The fp/desc decomposition lets E3 attribute RF's dominance to substructure
+    fingerprints vs continuous physicochemical descriptors.
+    """
     fps, descs, ok = [], [], []
     for s in smiles_list:
         m = Chem.MolFromSmiles(s)
@@ -135,7 +148,13 @@ def featurize(smiles_list):
     X_fp = np.vstack(fps) if fps else np.zeros((0, 1024), dtype=np.int8)
     X_desc = np.vstack(descs) if descs else np.zeros((0, 11), dtype=np.float32)
     X_desc = np.nan_to_num(X_desc, nan=0.0, posinf=0.0, neginf=0.0)
-    return np.hstack([X_fp, X_desc]).astype(np.float32), np.array(ok, dtype=bool)
+    if feature_mode == "fp_only":
+        X = X_fp.astype(np.float32)
+    elif feature_mode == "desc_only":
+        X = X_desc.astype(np.float32)
+    else:  # 'full' (default, byte-identical to original)
+        X = np.hstack([X_fp, X_desc]).astype(np.float32)
+    return X, np.array(ok, dtype=bool)
 
 
 def load_dataset(name, cfg):
@@ -247,7 +266,29 @@ def split_indices(smiles_list, n, split_col, seed, split_mode="scaffold", unimol
     return perm[:cut], perm[cut:]
 
 
-def fit_eval(X_tr, y_tr, X_te, y_te, task, seed):
+def _make_estimator(task, seed, model="rf"):
+    """Estimator factory. model='rf' (default) is byte-identical to the original
+    inline RandomForest. 'gbdt' = sklearn-native HistGradientBoosting (no extra
+    dependency, the GBT reviewers expect beside RF). 'dummy' = mean/class-prior
+    floor every table must clear."""
+    if model == "dummy":
+        from sklearn.dummy import DummyClassifier, DummyRegressor
+        return (DummyClassifier(strategy="prior") if task == "classification"
+                else DummyRegressor(strategy="mean"))
+    if model == "gbdt":
+        from sklearn.ensemble import (HistGradientBoostingClassifier,
+                                      HistGradientBoostingRegressor)
+        # class_weight on HistGB requires sklearn>=1.3; omit for version-robustness.
+        return (HistGradientBoostingClassifier(random_state=seed) if task == "classification"
+                else HistGradientBoostingRegressor(random_state=seed))
+    # model == 'rf' (default): identical to the original inline estimators.
+    if task == "classification":
+        return RandomForestClassifier(n_estimators=300, n_jobs=-1, random_state=seed,
+                                      class_weight="balanced")
+    return RandomForestRegressor(n_estimators=300, n_jobs=-1, random_state=seed)
+
+
+def fit_eval(X_tr, y_tr, X_te, y_te, task, seed, model="rf"):
     """Train+evaluate one seed.
 
     For binary classification (y_tr.ndim == 1) returns {roc_auc, pr_auc, f1}.
@@ -269,10 +310,7 @@ def fit_eval(X_tr, y_tr, X_te, y_te, task, seed):
                 per_task_pr_auc.append(float("nan"))
                 per_task_f1.append(float("nan"))
                 continue
-            clf = RandomForestClassifier(
-                n_estimators=300, n_jobs=-1, random_state=seed,
-                class_weight="balanced",
-            )
+            clf = _make_estimator("classification", seed, model)
             clf.fit(X_tr, y_tr_t)
             proba = clf.predict_proba(X_te)[:, 1]
             pred = (proba >= 0.5).astype(int)
@@ -305,12 +343,7 @@ def fit_eval(X_tr, y_tr, X_te, y_te, task, seed):
             "n_valid_roc_tasks": n_valid_roc,
         }
     if task == "classification":
-        clf = RandomForestClassifier(
-            n_estimators=300,
-            n_jobs=-1,
-            random_state=seed,
-            class_weight="balanced",
-        )
+        clf = _make_estimator("classification", seed, model)
         clf.fit(X_tr, y_tr.astype(int))
         proba = clf.predict_proba(X_te)[:, 1]
         pred = (proba >= 0.5).astype(int)
@@ -320,7 +353,7 @@ def fit_eval(X_tr, y_tr, X_te, y_te, task, seed):
             "f1": float(f1_score(y_te, pred, zero_division=0)),
         }
     else:
-        reg = RandomForestRegressor(n_estimators=300, n_jobs=-1, random_state=seed)
+        reg = _make_estimator("regression", seed, model)
         reg.fit(X_tr, y_tr)
         pred = reg.predict(X_te)
         return {
@@ -329,7 +362,7 @@ def fit_eval(X_tr, y_tr, X_te, y_te, task, seed):
         }
 
 
-def run_dataset(name, split_mode="scaffold", seeds=None):
+def run_dataset(name, split_mode="scaffold", seeds=None, model="rf", feature_mode="full"):
     if seeds is None:
         seeds = SEEDS
     cfg = DATASETS[name]
@@ -354,7 +387,7 @@ def run_dataset(name, split_mode="scaffold", seeds=None):
             print(f"[{name}] fold sizes: {dict(zip(unique.tolist(), cnt.tolist()))}")
 
     t0 = time.time()
-    X, ok = featurize(smi)
+    X, ok = featurize(smi, feature_mode=feature_mode)
     y = y[ok]
     if split is not None:
         split = split[ok]
@@ -366,10 +399,11 @@ def run_dataset(name, split_mode="scaffold", seeds=None):
     smi_kept = [s for s, k in zip(smi, ok) if k]
     print(f"[{name}] featurized {X.shape} in {time.time()-t0:.1f}s; dropped {int((~ok).sum())} invalid SMILES")
 
-    out = {"dataset": name, "task": cfg["task"], "n": int(X.shape[0]), "split_mode": split_mode, "n_seeds": len(seeds), "seeds": {}}
+    out = {"dataset": name, "task": cfg["task"], "n": int(X.shape[0]), "split_mode": split_mode,
+           "model": model, "feature_mode": feature_mode, "n_seeds": len(seeds), "seeds": {}}
     for s in seeds:
         tr, te = split_indices(smi_kept, X.shape[0], split, s, split_mode=split_mode, unimol_fold_ids=unimol_fold_ids)
-        m = fit_eval(X[tr], y[tr], X[te], y[te], cfg["task"], s)
+        m = fit_eval(X[tr], y[tr], X[te], y[te], cfg["task"], s, model=model)
         m["n_train"], m["n_test"] = int(len(tr)), int(len(te))
         out["seeds"][str(s)] = m
         print(f"[{name}] seed={s}  ", "  ".join(f"{k}={v:.4f}" if isinstance(v, float) else f"{k}={v}" for k, v in m.items()))
@@ -394,10 +428,22 @@ def main():
                    help="Number of RF seeds. 5 (default) uses the existing SEEDS=[9,19,29,39,49] "
                         "for backward-compat with stored JSON. 30 switches to Deng2023's seeds=range(30). "
                         "Any other integer uses SEEDS[:n].")
+    p.add_argument("--model", choices=["rf", "gbdt", "dummy"], default="rf",
+                   help="rf (default, Deng2023 RandomForest) | gbdt (HistGradientBoosting) | "
+                        "dummy (mean/class-prior floor).")
+    p.add_argument("--feature_mode", choices=["full", "fp_only", "desc_only"], default="full",
+                   help="full (Morgan+RDKit2D, default) | fp_only (Morgan) | desc_only (RDKit2D).")
     p.add_argument("--out", default=None)
     args = p.parse_args()
     if args.out is None:
-        args.out = str(REPO / f"baselines_ml_results_{args.split}.json")
+        # Default (rf+full) keeps the original filename for backward-compat;
+        # any other config is suffixed so it never overwrites the canonical RF JSON.
+        suffix = ""
+        if args.model != "rf":
+            suffix += f"_{args.model}"
+        if args.feature_mode != "full":
+            suffix += f"_{args.feature_mode}"
+        args.out = str(REPO / f"baselines_ml_results_{args.split}{suffix}.json")
 
     if args.n_seeds == 30:
         seeds = SEEDS_DENG30
@@ -411,7 +457,8 @@ def main():
         if name not in DATASETS:
             print(f"skip unknown dataset {name}")
             continue
-        results[name] = run_dataset(name, split_mode=args.split, seeds=seeds)
+        results[name] = run_dataset(name, split_mode=args.split, seeds=seeds,
+                                    model=args.model, feature_mode=args.feature_mode)
 
     with open(args.out, "w") as f:
         json.dump(results, f, indent=2)

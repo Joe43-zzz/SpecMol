@@ -414,6 +414,20 @@ if __name__ == '__main__':
                         help="T8 atom->pair update: 'qk_hadamard' (multi-channel per-head Q*K "
                              "Hadamard; 'qk_outer' is a deprecated alias) or 'logits' "
                              "(scalar-per-head ablation, same rule as T6/T7)")
+    parser.add_argument('--t9', action='store_true',
+                        help='Enable T9 faithful INTERLEAVED co-update: K independent layers '
+                             'consumed one-per-Chebyshev-step with a PERSISTENT pair state (fixes '
+                             "T8's sidecar-run-once + pair-discard). Spectral path = V2-T5 static "
+                             'Laplacian; rich pair reaches nodes via the per-step attention message '
+                             '(not re-scalarized). Requires --use_v2; mutually exclusive with '
+                             '--t6/--t6_safe/--t7/--t8. ReZero soft-start -> epoch 0 == V2-T5.')
+    parser.add_argument('--t9_num_heads', default=4, type=int, help='T9 attention heads (default 4)')
+    parser.add_argument('--t9_head_dim', default=32, type=int, help='T9 per-head dim (default 32)')
+    parser.add_argument('--t9_dropout', default=0.0, type=float, help='T9 attention dropout (default 0.0)')
+    parser.add_argument('--t9_init_std', default=0.02, type=float, help='T9 projection init std (default 0.02)')
+    parser.add_argument('--t9_pair_update', default='qk_hadamard', type=str,
+                        choices=['qk_hadamard', 'qk_outer', 'logits'],
+                        help="T9 atom->pair update (same options as T8)")
     parser.add_argument('--t6_warmup_epochs', default=0, type=int,
                         help='Linear LR warmup over the first N epochs (T6 stability). 0 disables (default).')
     parser.add_argument('--bias_init', default=5.0, type=float,
@@ -542,6 +556,12 @@ if __name__ == '__main__':
             t8_dropout=args.t8_dropout,
             t8_init_std=args.t8_init_std,
             t8_pair_update=args.t8_pair_update,
+            t9=args.t9,
+            t9_num_heads=args.t9_num_heads,
+            t9_head_dim=args.t9_head_dim,
+            t9_dropout=args.t9_dropout,
+            t9_init_std=args.t9_init_std,
+            t9_pair_update=args.t9_pair_update,
             bias_init=args.bias_init,
             randomize_pair=args.randomize_pair,
         )
@@ -663,7 +683,13 @@ if __name__ == '__main__':
             # (1e-4) the gate barely moves from its logit -2.0 init in ft_max_epochs,
             # so the "does fine-tuning open the gate" question is never actually
             # tested. A higher gate LR lets task gradient drive it.
-            gate_params = [p for n, p in spec_model.named_parameters() if n.endswith('attn_gate')]
+            # Was 'attn_gate' only -> matched T7's gate but SILENTLY MISSED T8's
+            # ReZero gates (node_gate/pair_gate/ffn_gate, pair_atom_coupdate.py:138-140),
+            # so under --finetune T8's gates trained at ft_encoder_lr=1e-4 ('barely
+            # move') and the "does finetune open the co-update gates" question was
+            # never actually tested. Generalize to all ReZero/attn gate suffixes.
+            GATE_SUFFIXES = ('attn_gate', 'node_gate', 'pair_gate', 'ffn_gate')
+            gate_params = [p for n, p in spec_model.named_parameters() if n.endswith(GATE_SUFFIXES)]
             gate_ids = {id(p) for p in gate_params}
             base_params = [p for p in spec_model.parameters() if id(p) not in gate_ids]
             groups = [

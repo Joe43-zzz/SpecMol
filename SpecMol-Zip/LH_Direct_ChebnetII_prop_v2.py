@@ -21,6 +21,7 @@ from torch.nn import Parameter
 
 from node_to_pair_update import NodeToPairUpdate
 from pair_biased_attention import PairBiasedSparseAttention
+from pair_atom_coupdate import PairAtomCoUpdateStack, PairAtomCoUpdateStepStack
 
 
 def cheby(i, x):
@@ -59,7 +60,12 @@ class ChebnetII_prop_V2(MessagePassing):
     def __init__(self, K, node_dim=None, pair_dim=None, proj_dim=32,
                  t7=False, t7_num_heads=4, t7_head_dim=32,
                  t7_dropout=0.0, t7_init_std=0.02,
-                 t7_disable_pair_update=False, **kwargs):
+                 t7_disable_pair_update=False, t7_force_inject=False,
+                 t8=False, t8_num_layers=4, t8_num_heads=4, t8_head_dim=32,
+                 t8_dropout=0.0, t8_init_std=0.02, t8_pair_update='qk_hadamard',
+                 t9=False, t9_num_heads=4, t9_head_dim=32,
+                 t9_dropout=0.0, t9_init_std=0.02, t9_pair_update='qk_hadamard',
+                 **kwargs):
         super(ChebnetII_prop_V2, self).__init__(aggr='add', **kwargs)
 
         self.K = K
@@ -78,10 +84,38 @@ class ChebnetII_prop_V2(MessagePassing):
         self.slides_l = Parameter(torch.zeros(self.K + 1), requires_grad=True)
         self.slides_h = Parameter(torch.zeros(self.K + 1), requires_grad=True)
 
-        # T6 / T7 are mutually exclusive: T6 = bilinear pair update only;
-        # T7 = pair-biased multi-head attention with bidirectional pair update
-        # and Tx_k residual injection.
-        if t7 and node_dim is not None and pair_dim is not None:
+        # T6 / T7 / T8 are mutually exclusive dynamic pair paths.
+        #   T6 = bilinear pair update only (scalar reaches nodes).
+        #   T7 = pair-biased multi-head attention + bidirectional pair update,
+        #        one block reused across the K Chebyshev steps.
+        #   T8 = faithful Uni-Mol co-update STACK (L independent layers, per-head
+        #        atom->pair update), run ONCE before the K-loop (decoupled), then
+        #        the co-evolved pair feeds the static Laplacian and the co-evolved
+        #        node features are residually added to the spectral output.
+        if t8 and node_dim is not None and pair_dim is not None:
+            self.pair_coupdate = PairAtomCoUpdateStack(
+                node_dim=node_dim, pair_dim=pair_dim,
+                num_heads=t8_num_heads, head_dim=t8_head_dim,
+                num_layers=t8_num_layers, dropout=t8_dropout,
+                pair_update=t8_pair_update, init_std=t8_init_std,
+            )
+            # The co-evolved node features enter `out` as a DELTA residual
+            # (x_co - x), NOT a separately-gated term. The stack's own per-layer
+            # ReZero gates start at 0, so at init x_co == x exactly -> delta == 0
+            # -> the whole T8 path is bitwise-equal to V2-T5 (epoch-0 sanity).
+            # Using the delta (rather than an extra outer gate on raw x_co) is
+            # deliberate: an outer gate initialised at 0 would block gradient to
+            # the inner node-side gates (a chained-ReZero cold start, since the
+            # node path reaches `out` only through that outer gate). The delta
+            # form lets the inner node gates receive gradient from step 1 while
+            # preserving the identity start, and keeps the soft start in ONE
+            # place (the per-layer gates). The pair side already reaches `out`
+            # through the rebuilt Laplacian, independent of this residual.
+            self.t8_enabled = True
+            self.t7_enabled = False
+            self.t6_enabled = False
+            self.t7_disable_pair_update = False
+        elif t7 and node_dim is not None and pair_dim is not None:
             # The node-side attention gate is now a per-head [num_heads] vector
             # inside PairBiasedSparseAttention (applied before its bias-free
             # out_proj), not a scalar here. T7 v1 (BACE 0.721 vs T5 0.837)
@@ -94,6 +128,7 @@ class ChebnetII_prop_V2(MessagePassing):
                 num_heads=t7_num_heads, head_dim=t7_head_dim,
                 dropout=t7_dropout, init_std=t7_init_std,
                 K_steps=K, use_layernorm=True,
+                force_inject=t7_force_inject,
             )
             # T7-static-pair flag: if set, pair_clone += pair_delta is SKIPPED in
             # forward, so pair_repr stays at Uni-Mol values through K-loop.
@@ -103,17 +138,37 @@ class ChebnetII_prop_V2(MessagePassing):
             self.t7_disable_pair_update = t7_disable_pair_update
             self.t7_enabled = True
             self.t6_enabled = False
-        elif node_dim is not None and pair_dim is not None:
+            self.t8_enabled = False
+        elif node_dim is not None and pair_dim is not None and not t9:
             self.node_to_pair = NodeToPairUpdate(
                 node_dim=node_dim, pair_dim=pair_dim, proj_dim=proj_dim,
             )
             self.t6_enabled = True
             self.t7_enabled = False
+            self.t8_enabled = False
         else:
             self.t6_enabled = False
             self.t7_enabled = False
+            self.t8_enabled = False
+        # T9: faithful per-step interleaved co-update. K INDEPENDENT layers
+        # consumed one-per-Chebyshev-step with a PERSISTENT pair state (fixes T8's
+        # D2 sidecar/D5 discard). Mutually exclusive with t6/t7/t8 (the chain above
+        # sets those False when t9 is on). The spectral path is UNCHANGED from
+        # V2-T5 (static Laplacian from the incoming edge_weight, no per-step
+        # rebuild); the rich pair reaches nodes ONLY through the per-step attention
+        # message accumulated into attn_acc -- so epoch-0 == V2-T5 (ReZero gates 0).
+        self.t9_enabled = bool(t9 and node_dim is not None and pair_dim is not None)
+        if self.t9_enabled:
+            self.pair_coupdate_step = PairAtomCoUpdateStepStack(
+                node_dim=node_dim, pair_dim=pair_dim,
+                num_heads=t9_num_heads, head_dim=t9_head_dim,
+                num_steps=K, dropout=t9_dropout,
+                pair_update=t9_pair_update, init_std=t9_init_std,
+            )
         self.latest_t6_stats = None
         self.latest_t7_stats = None
+        self.latest_t8_stats = None
+        self.latest_t9_stats = None
 
     def reset_parameters(self):
         self.temp_low.data.fill_(2.0 / self.K)
@@ -225,6 +280,8 @@ class ChebnetII_prop_V2(MessagePassing):
         num_nodes = x.size(self.node_axis)
         t6 = self.t6_enabled and pair_repr_edge is not None
         t7 = self.t7_enabled and pair_repr_edge is not None
+        t8 = getattr(self, "t8_enabled", False) and pair_repr_edge is not None
+        t9 = getattr(self, "t9_enabled", False) and pair_repr_edge is not None
         self.latest_t6_stats = {
             "highpass": bool(highpass),
             "updates": [],
@@ -236,8 +293,36 @@ class ChebnetII_prop_V2(MessagePassing):
             "edge_weights": [],
         } if t7 else None
         # Pick a single "dynamic" flag for branches that are common to T6 and T7
+        # (per-step pair-driven Laplacian rebuild). T8 is intentionally NOT
+        # "dynamic": it co-evolves atom/pair ONCE before the K-loop, then runs the
+        # ordinary static Chebyshev recurrence on the co-evolved Laplacian. This
+        # keeps the Chebyshev polynomial structure intact and avoids the 2^K
+        # recurrence blow-up that forced T7's awkward attn accumulation.
         dynamic = t6 or t7
         dyn_stats = self.latest_t6_stats if t6 else self.latest_t7_stats
+
+        # --- T8: faithful co-update run ONCE, before any spectral propagation ---
+        t8_x_delta = None
+        if t8:
+            x_co, pair_co = self.pair_coupdate(x, pair_repr_edge, pair_edge_index)
+            # Node-side residual as a DELTA: at init x_co == x -> delta == 0
+            # (soft start) and the inner node gates still receive gradient.
+            t8_x_delta = x_co - x
+            pair_repr_edge = pair_co
+            # Rebuild edge_weight from the co-evolved pair so the spectral path
+            # also sees the geometry (single recompute, not per-step).
+            if pair_to_ew is not None:
+                edge_weight = pair_to_ew(
+                    pair_repr_edge, pair_edge_index, edge_index, batch,
+                )
+            with torch.no_grad():
+                gates = self.pair_coupdate.gate_values()
+                self.latest_t8_stats = {
+                    "highpass": bool(highpass),
+                    "layer_gates": gates,
+                    "node_delta_norm": float(t8_x_delta.norm().item()),
+                    "edge_weight": self._edge_weight_stats(edge_weight),
+                }
 
         # --- Step 0: initial Laplacian from edge_weight ---
         edge_index_tilde, norm_tilde = self._build_laplacian(
@@ -260,7 +345,7 @@ class ChebnetII_prop_V2(MessagePassing):
         # still reaches node embeddings via (a) the accumulated attn_acc added
         # to `out` at the end, and (b) the per-step Laplacian rebuilt from the
         # updated pair_repr (T6-style indirect path).
-        attn_acc = torch.zeros_like(Tx_1) if t7 else None
+        attn_acc = torch.zeros_like(Tx_1) if (t7 or t9) else None
 
         # Dynamic pair update after Tx_1
         if t6:
@@ -283,6 +368,14 @@ class ChebnetII_prop_V2(MessagePassing):
             # legitimate scaling channel; final averaging by K happens at the
             # injection site below.
             attn_acc = attn_acc + out_attn          # was: + coe[1] * out_attn
+        elif t9:
+            # T9: per-step co-update layer 0 (Tx_1). Returns the multi-channel node
+            # message (x_out - Tx_1) accumulated into attn_acc (NOT fed back into
+            # Tx_1, so the Chebyshev recurrence stays pure); pair_repr_edge persists.
+            node_delta, pair_repr_edge = self.pair_coupdate_step.step(
+                0, Tx_1, pair_repr_edge, pair_edge_index,
+            )
+            attn_acc = attn_acc + node_delta
 
         out = coe[0] / 2 * Tx_0 + coe[1] * Tx_1
 
@@ -316,6 +409,12 @@ class ChebnetII_prop_V2(MessagePassing):
                 if not self.t7_disable_pair_update:
                     pair_repr_edge = pair_after
                 attn_acc = attn_acc + out_attn      # S3b: was + coe[i] * out_attn
+            elif t9:
+                # T9: per-step co-update layer (i-1) for Tx_i; pair persists.
+                node_delta, pair_repr_edge = self.pair_coupdate_step.step(
+                    i - 1, Tx_2, pair_repr_edge, pair_edge_index,
+                )
+                attn_acc = attn_acc + node_delta
 
             Tx_0, Tx_1 = Tx_1, Tx_2
 
@@ -328,7 +427,26 @@ class ChebnetII_prop_V2(MessagePassing):
             # scale with the polynomial order. attn_gate controls total weight.
             out = out + attn_acc / max(self.K, 1)
 
-        if dynamic:
+        if t9:
+            # T9: inject the accumulated per-step co-update messages ONCE (T7's
+            # proven site, /K so magnitude doesn't scale with polynomial order).
+            # ReZero gates init 0 -> attn_acc == 0 at epoch 0 -> bitwise-equal to
+            # V2-T5 (the spectral path used the same static Laplacian, untouched).
+            out = out + attn_acc / max(self.K, 1)
+            with torch.no_grad():
+                self.latest_t9_stats = {
+                    "highpass": bool(highpass),
+                    "layer_gates": self.pair_coupdate_step.gate_values(),
+                    "attn_acc_norm": float(attn_acc.norm().item()),
+                }
+
+        if t8:
+            # Add the co-evolved node-feature DELTA. At init the stack is the
+            # identity map (per-layer ReZero gates = 0) so t8_x_delta == 0 and
+            # epoch 0 is bitwise-equal to the pure-T5 spectral path.
+            out = out + t8_x_delta
+
+        if dynamic or t8 or t9:
             return out, pair_repr_edge
         return out
 

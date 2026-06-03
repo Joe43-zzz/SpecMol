@@ -25,11 +25,16 @@ class ChebNetII_V2(nn.Module):
                  is_bns=False, act_fn='relu', pair_dim=None, proj_dim=32,
                  t7=False, t7_num_heads=4, t7_head_dim=32,
                  t7_dropout=0.0, t7_init_std=0.02,
-                 t7_disable_pair_update=False):
+                 t7_disable_pair_update=False, t7_force_inject=False,
+                 t8=False, t8_num_layers=4, t8_num_heads=4, t8_head_dim=32,
+                 t8_dropout=0.0, t8_init_std=0.02, t8_pair_update='qk_hadamard',
+                 t9=False, t9_num_heads=4, t9_head_dim=32,
+                 t9_dropout=0.0, t9_init_std=0.02, t9_pair_update='qk_hadamard'):
         super(ChebNetII_V2, self).__init__()
         self.lin1 = Linear(num_features, hidden)
         # T6: pass node_dim+pair_dim (without t7) → NodeToPairUpdate in prop layer
         # T7: pass node_dim+pair_dim+t7=True → PairBiasedSparseAttention in prop layer
+        # T8: pass node_dim+pair_dim+t8=True → PairAtomCoUpdateStack in prop layer
         self.prop1 = ChebnetII_prop_V2(
             K=K, node_dim=num_features if pair_dim else None,
             pair_dim=pair_dim, proj_dim=proj_dim,
@@ -37,6 +42,13 @@ class ChebNetII_V2(nn.Module):
             t7_num_heads=t7_num_heads, t7_head_dim=t7_head_dim,
             t7_dropout=t7_dropout, t7_init_std=t7_init_std,
             t7_disable_pair_update=t7_disable_pair_update,
+            t7_force_inject=t7_force_inject,
+            t8=t8, t8_num_layers=t8_num_layers, t8_num_heads=t8_num_heads,
+            t8_head_dim=t8_head_dim, t8_dropout=t8_dropout,
+            t8_init_std=t8_init_std, t8_pair_update=t8_pair_update,
+            t9=t9, t9_num_heads=t9_num_heads, t9_head_dim=t9_head_dim,
+            t9_dropout=t9_dropout, t9_init_std=t9_init_std,
+            t9_pair_update=t9_pair_update,
         )
         assert act_fn in ['relu', 'prelu']
         self.act_fn = nn.PReLU() if act_fn == 'prelu' else nn.ReLU()
@@ -106,21 +118,28 @@ class LH_Direct_V2(nn.Module):
                  proj_dim=32, t6_safe_delta_init_std=1e-3, bias_init=5.0,
                  t7=False, t7_num_heads=4, t7_head_dim=32,
                  t7_dropout=0.0, t7_init_std=0.02,
-                 t7_disable_pair_update=False, randomize_pair=False):
+                 t7_disable_pair_update=False, t7_force_inject=False,
+                 t8=False, t8_num_layers=4, t8_num_heads=4, t8_head_dim=32,
+                 t8_dropout=0.0, t8_init_std=0.02, t8_pair_update='qk_hadamard',
+                 t9=False, t9_num_heads=4, t9_head_dim=32,
+                 t9_dropout=0.0, t9_init_std=0.02, t9_pair_update='qk_hadamard',
+                 randomize_pair=False):
         super(LH_Direct_V2, self).__init__()
-        # Mutual exclusion: at most one of t6 / t6_safe / t7 may be enabled.
+        # Mutual exclusion: at most one of t6 / t6_safe / t7 / t8 may be enabled.
         # Reasoning: each modifies the dynamic pair_repr update path; combining
-        # would either compound updates non-deterministically (T6+T7) or attach
-        # two pair-update modules to the same forward (T6_safe+T7).
-        if sum([bool(t6), bool(t6_safe), bool(t7)]) > 1:
+        # would either compound updates non-deterministically or attach two
+        # pair-update modules to the same forward.
+        if sum([bool(t6), bool(t6_safe), bool(t7), bool(t8), bool(t9)]) > 1:
             raise ValueError(
-                f"At most one of t6/t6_safe/t7 may be enabled, "
-                f"got t6={t6}, t6_safe={t6_safe}, t7={t7}"
+                f"At most one of t6/t6_safe/t7/t8/t9 may be enabled, "
+                f"got t6={t6}, t6_safe={t6_safe}, t7={t7}, t8={t8}, t9={t9}"
             )
         self.t6 = t6
         self.t6_safe = t6_safe
         self.t6_safe_frozen_zero = t6_safe_frozen_zero
         self.t7 = t7
+        self.t8 = t8
+        self.t9 = t9
         # Ablation: replace the Uni-Mol pair_repr with a same-shape Gaussian
         # before it enters pair_to_edge_weight. Tests whether the gating
         # improvement is geometry-driven or just MLP capacity exploiting a
@@ -134,7 +153,7 @@ class LH_Direct_V2(nn.Module):
             dropout=dropout,
             is_bns=is_bns,
             act_fn=act_fn,
-            pair_dim=pair_dim if (t6 or t7) else None,
+            pair_dim=pair_dim if (t6 or t7 or t8 or t9) else None,
             proj_dim=proj_dim,
             t7=t7,
             t7_num_heads=t7_num_heads,
@@ -142,6 +161,20 @@ class LH_Direct_V2(nn.Module):
             t7_dropout=t7_dropout,
             t7_init_std=t7_init_std,
             t7_disable_pair_update=t7_disable_pair_update,
+            t7_force_inject=t7_force_inject,
+            t8=t8,
+            t8_num_layers=t8_num_layers,
+            t8_num_heads=t8_num_heads,
+            t8_head_dim=t8_head_dim,
+            t8_dropout=t8_dropout,
+            t8_init_std=t8_init_std,
+            t8_pair_update=t8_pair_update,
+            t9=t9,
+            t9_num_heads=t9_num_heads,
+            t9_head_dim=t9_head_dim,
+            t9_dropout=t9_dropout,
+            t9_init_std=t9_init_std,
+            t9_pair_update=t9_pair_update,
         )
         self.pair_to_edge_weight = PairToEdgeWeight(
             pair_dim=pair_dim, hidden_dim=pair_hidden_dim, nullify=nullify_pair,
@@ -152,6 +185,8 @@ class LH_Direct_V2(nn.Module):
         self.latest_t6_safe_stats = None
         self.latest_current_t6_stats = []
         self.latest_current_t7_stats = []
+        self.latest_current_t8_stats = []
+        self.latest_current_t9_stats = []
         self.latest_grad_norms = None
         self.act_fn = nn.ReLU()
         self.alpha = nn.Parameter(torch.tensor(0.5), requires_grad=True)
@@ -246,6 +281,22 @@ class LH_Direct_V2(nn.Module):
                 "t7_delta_proj": self._grad_norm(pair_attn.delta_proj),
             })
             self.latest_grad_norms = grad_norms
+        if self.t8 and hasattr(self.encoder.prop1, "pair_coupdate"):
+            stack = self.encoder.prop1.pair_coupdate
+            L0 = stack.layers[0]
+            grad_norms.update({
+                "t8_L0_q":          self._grad_norm(L0.q),
+                "t8_L0_k":          self._grad_norm(L0.k),
+                "t8_L0_v":          self._grad_norm(L0.v),
+                "t8_L0_out_proj":   self._grad_norm(L0.out_proj),
+                "t8_L0_bias_proj":  self._grad_norm(L0.bias_proj),
+                "t8_L0_pair_update": self._grad_norm(L0.pair_update_head),
+                "t8_L0_node_gate": float(L0.node_gate.grad.norm().item())
+                if L0.node_gate.grad is not None else 0.0,
+                "t8_L0_pair_gate": float(L0.pair_gate.grad.norm().item())
+                if L0.pair_gate.grad is not None else 0.0,
+            })
+            self.latest_grad_norms = grad_norms
         return grad_norms
 
     def _edge_weight_from_pair(self, pair_repr_edge, pair_edge_index, edge_index, batch):
@@ -302,11 +353,22 @@ class LH_Direct_V2(nn.Module):
         return edge_weight
 
     def _encode(self, feat, edge_index, edge_weight, highpass, data, device):
-        """Run encoder in T5, T6, or T7 mode, return node features only."""
-        if self.t6 or self.t7:
-            # T6 / T7 share the same input plumbing — the prop layer picks the
-            # right dynamic update based on its t6_enabled / t7_enabled flags.
+        """Run encoder in T5, T6, T7, or T8 mode, return node features only."""
+        if self.t6 or self.t7 or self.t8 or self.t9:
+            # T6 / T7 / T8 / T9 share the same input plumbing — the prop layer picks
+            # the right path based on its t6/t7/t8/t9_enabled flags. T9 reuses the
+            # static edge_weight (V2-T5 Laplacian, no rebuild) and routes the rich
+            # pair through its per-step co-update; randomize_pair below substitutes
+            # the pair the co-update consumes (the geometry-free control for T9).
             pair_repr_edge = data.pair_repr_edge.to(device).clone()
+            # randomize_pair must hit the pair the DYNAMIC path actually consumes.
+            # _compute_edge_weight only randomizes the *initial* edge_weight, which
+            # T6/T7 partially and T8 fully discard (they rebuild it from this pair).
+            # So the geometry-free ablation has to substitute here, at the single
+            # source of pair_repr for the encoder. (Static V2-T5 stays correct via
+            # _compute_edge_weight, which keeps its own randomize_pair branch.)
+            if self.randomize_pair:
+                pair_repr_edge = torch.randn_like(pair_repr_edge)
             pair_edge_index = data.pair_edge_index.to(device)
             batch = data.batch.to(device)
             result = self.encoder(
@@ -325,6 +387,14 @@ class LH_Direct_V2(nn.Module):
                 stats = getattr(self.encoder.prop1, "latest_t7_stats", None)
                 if stats is not None:
                     self.latest_current_t7_stats.append(stats)
+            elif self.t8:
+                stats = getattr(self.encoder.prop1, "latest_t8_stats", None)
+                if stats is not None:
+                    self.latest_current_t8_stats.append(stats)
+            elif self.t9:
+                stats = getattr(self.encoder.prop1, "latest_t9_stats", None)
+                if stats is not None:
+                    self.latest_current_t9_stats.append(stats)
             # Discard pair_repr_final; only need node features for downstream
             return result[0] if isinstance(result, tuple) else result
         else:
@@ -338,6 +408,8 @@ class LH_Direct_V2(nn.Module):
         fp = data.fps.to(device)
         self.latest_current_t6_stats = []
         self.latest_current_t7_stats = []
+        self.latest_current_t8_stats = []
+        self.latest_current_t9_stats = []
 
         if self.t6_safe:
             edge_weight = self._compute_t6_safe_edge_weight(feat, edge_index, data, device)
