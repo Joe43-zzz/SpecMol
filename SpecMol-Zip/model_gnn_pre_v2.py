@@ -123,6 +123,7 @@ class LH_Direct_V2(nn.Module):
                  t8_dropout=0.0, t8_init_std=0.02, t8_pair_update='qk_hadamard',
                  t9=False, t9_num_heads=4, t9_head_dim=32,
                  t9_dropout=0.0, t9_init_std=0.02, t9_pair_update='qk_hadamard',
+                 t9_raw_geom=False,
                  randomize_pair=False):
         super(LH_Direct_V2, self).__init__()
         # Mutual exclusion: at most one of t6 / t6_safe / t7 / t8 may be enabled.
@@ -180,6 +181,15 @@ class LH_Direct_V2(nn.Module):
             pair_dim=pair_dim, hidden_dim=pair_hidden_dim, nullify=nullify_pair,
             bias_init=bias_init,
         )
+        # Option A2: raw-geometry pair injection for T9. When set, the T9 co-update
+        # consumes RBF(data.pair_dist_edge) -- raw, end-to-end-trainable, H-includable
+        # geometry -- INSTEAD of the frozen single-conformer Uni-Mol pair_repr. The
+        # spectral path is untouched (still the V2-T5 static Laplacian), so epoch-0
+        # == V2-T5 still holds (T9 ReZero gates 0 -> node_delta 0 regardless of pair).
+        self.t9_raw_geom = bool(t9 and t9_raw_geom)
+        if self.t9_raw_geom:
+            from dist_to_edge_weight import RBFPairEmbedding
+            self.rbf_pair = RBFPairEmbedding(pair_dim=pair_dim)
         self.node_to_pair_safe = None
         self.pair_gate = None
         self.latest_t6_safe_stats = None
@@ -360,6 +370,28 @@ class LH_Direct_V2(nn.Module):
             # static edge_weight (V2-T5 Laplacian, no rebuild) and routes the rich
             # pair through its per-step co-update; randomize_pair below substitutes
             # the pair the co-update consumes (the geometry-free control for T9).
+            if getattr(self, "t9_raw_geom", False):
+                # A2: build the pair from RAW interatomic distances (RBF), not the
+                # frozen Uni-Mol pair. randomize_pair below randomizes the DISTANCES
+                # (the geometry-free control for raw-geom).
+                dist = data.pair_dist_edge.to(device)
+                if self.randomize_pair:
+                    dist = torch.rand_like(dist) * self.rbf_pair.r_cut
+                pair_repr_edge = self.rbf_pair(dist)
+                pair_edge_index = data.pair_edge_index.to(device)
+                batch = data.batch.to(device)
+                result = self.encoder(
+                    x=feat, edge_index=edge_index, edge_weight=edge_weight,
+                    highpass=highpass,
+                    pair_repr_edge=pair_repr_edge,
+                    pair_edge_index=pair_edge_index,
+                    batch=batch,
+                    pair_to_ew=self.pair_to_edge_weight,
+                )
+                stats = getattr(self.encoder.prop1, "latest_t9_stats", None)
+                if stats is not None:
+                    self.latest_current_t9_stats.append(stats)
+                return result[0] if isinstance(result, tuple) else result
             pair_repr_edge = data.pair_repr_edge.to(device).clone()
             # randomize_pair must hit the pair the DYNAMIC path actually consumes.
             # _compute_edge_weight only randomizes the *initial* edge_weight, which

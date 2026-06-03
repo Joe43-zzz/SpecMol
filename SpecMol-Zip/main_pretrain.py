@@ -428,6 +428,12 @@ if __name__ == '__main__':
     parser.add_argument('--t9_pair_update', default='qk_hadamard', type=str,
                         choices=['qk_hadamard', 'qk_outer', 'logits'],
                         help="T9 atom->pair update (same options as T8)")
+    parser.add_argument('--t9_raw_geom', action='store_true',
+                        help='Option A2: T9 consumes RBF(raw interatomic distance d_ij) as its '
+                             'pair input INSTEAD of the frozen single-conformer Uni-Mol pair_repr '
+                             '-- raw, end-to-end-trainable, H-includable geometry. Requires --t9 '
+                             'and data carrying pair_dist_edge. With --randomize_pair the DISTANCES '
+                             'are randomized (the geometry-free control).')
     parser.add_argument('--t6_warmup_epochs', default=0, type=int,
                         help='Linear LR warmup over the first N epochs (T6 stability). 0 disables (default).')
     parser.add_argument('--bias_init', default=5.0, type=float,
@@ -562,6 +568,7 @@ if __name__ == '__main__':
             t9_dropout=args.t9_dropout,
             t9_init_std=args.t9_init_std,
             t9_pair_update=args.t9_pair_update,
+            t9_raw_geom=args.t9_raw_geom,
             bias_init=args.bias_init,
             randomize_pair=args.randomize_pair,
         )
