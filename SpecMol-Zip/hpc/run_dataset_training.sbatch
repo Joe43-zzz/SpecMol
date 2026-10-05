@@ -86,8 +86,14 @@ case "$VARIANT" in
   t7)
     CMD="$CMD --path down_task_${TASK}_v2 --use_v2 --t7"
     ;;
+  t8)
+    CMD="$CMD --path down_task_${TASK}_v2 --use_v2 --t8"
+    ;;
+  t8logits)
+    CMD="$CMD --path down_task_${TASK}_v2 --use_v2 --t8 --t8_pair_update logits"
+    ;;
   *)
-    echo "Unknown variant: $VARIANT (use v0, v2, t6, t6safe, t6safe0, or t7)" >&2
+    echo "Unknown variant: $VARIANT (use v0, v2, t6, t6safe, t6safe0, t7, t8, or t8logits)" >&2
     exit 1
     ;;
 esac

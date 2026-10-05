@@ -652,11 +652,16 @@
 }
 
 @inproceedings{hussain2022egt,
-  title     = {Edge-augmented Graph Transformers: Global Self-attention is Enough for Graphs},
+  title     = {Global Self-Attention as a Replacement for Graph Convolution},
   author    = {Hussain, Md Shamim and Zaki, Mohammed J. and Subramanian, Dharmashankar},
-  booktitle = {ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD)},
+  booktitle = {Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD)},
+  pages     = {655--665},
   year      = {2022},
-  note      = {EGT: dedicated all-pairs $N\times N$ edge channels with sigmoid-gated value aggregation, updated through MHA, end-to-end; PCQM4Mv2 SOTA. Same gated all-pairs pair object T7 injects, but learned end-to-end and unaudited. Venue verified (KDD 2022); confirm arXiv/DOI before camera-ready.}
+  doi       = {10.1145/3534678.3539296},
+  eprint    = {2108.03348},
+  archivePrefix = {arXiv},
+  url       = {https://doi.org/10.1145/3534678.3539296},
+  note      = {Edge-augmented Graph Transformer (EGT; arXiv v1/v2 titled ``Edge-augmented Graph Transformers: Global Self-attention is Enough for Graphs''): dedicated all-pairs $N\times N$ edge channels with sigmoid-gated value aggregation, updated through MHA, end-to-end; PCQM4Mv2 SOTA. Same gated all-pairs pair object T7 injects, but learned end-to-end and unaudited.}
 }
 
 @inproceedings{bo2021fagcn,
@@ -696,9 +701,13 @@
 @inproceedings{wang2023threedpgt,
   title     = {Automated 3D Pre-Training for Molecular Property Prediction},
   author    = {Wang, Xu and Zhao, Huan and Tu, Wei-wei and Yao, Quanming},
-  booktitle = {ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD)},
+  booktitle = {Proceedings of the 29th ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD)},
   year      = {2023},
-  note      = {3D-PGT: multi-task 3D-geometry generative pretraining (bond length / angle / dihedral) on a GPS backbone, then 2D-only inference; BACE 0.809. Distills geometry into weights at pretrain; we instead inject a frozen pair at inference and add a random-pair null. Venue verified (KDD 2023); confirm arXiv/DOI before camera-ready.}
+  doi       = {10.1145/3580305.3599252},
+  eprint    = {2306.07812},
+  archivePrefix = {arXiv},
+  url       = {https://doi.org/10.1145/3580305.3599252},
+  note      = {3D-PGT: multi-task 3D-geometry generative pretraining (bond length / angle / dihedral) on a GPS backbone, then 2D-only inference; BACE 0.809. Distills geometry into weights at pretrain; we instead inject a frozen pair at inference and add a random-pair null.}
 }
 
 @article{qiao2025scage,
@@ -706,8 +715,84 @@
   author  = {Qiao, Jianbo and Jin, Junru and Wang, Di and others},
   journal = {Nature Communications},
   volume  = {16},
+  number  = {1},
   pages   = {4382},
   year    = {2025},
-  note    = {SCAGE: 2D+3D multi-task pretraining with distance-masked attention and a fingerprint-prediction objective on 5M MMFF conformers, end-to-end finetune; BACE 0.854, BBBP 0.734. Closest competitor: trains THROUGH the frozen-injection regime we isolate, with no frozen-source, no random-pair null, no frozen-probe-vs-finetune correction. VERIFY exact volume / article-number / DOI before camera-ready (vol/pages migrated from litreview, not independently re-confirmed).},
-  url       = {https://www.nature.com/ncomms/}
+  doi     = {10.1038/s41467-025-59634-0},
+  note    = {SCAGE: 2D+3D multi-task pretraining with distance-masked attention and a fingerprint-prediction objective on 5M MMFF conformers, end-to-end finetune; BACE 0.854, BBBP 0.734. Closest competitor: trains THROUGH the frozen-injection regime we isolate, with no frozen-source, no random-pair null, no frozen-probe-vs-finetune correction. Vol.~16, article~4382 and DOI verified against the Nature Communications record; full author list to confirm at camera-ready.},
+  url       = {https://doi.org/10.1038/s41467-025-59634-0}
+}
+
+% ===== SOTA-ceiling references (Related-Work "ceiling we do not contest"; KDD reformat) =====
+@article{ross2022molformer,
+  title   = {Large-scale chemical language representations capture molecular structure and properties},
+  author  = {Ross, Jerret and Belgodere, Brian and Chenthamarakshan, Vijil and Padhi, Inkit and Mroueh, Youssef and Das, Payel},
+  journal = {Nature Machine Intelligence},
+  volume  = {4},
+  pages   = {1256--1264},
+  year    = {2022},
+  doi     = {10.1038/s42256-022-00580-7},
+  eprint  = {2106.09553},
+  archivePrefix = {arXiv},
+  url     = {https://doi.org/10.1038/s42256-022-00580-7},
+  note    = {MoLFormer-XL: SMILES masked-LM on $\sim$1.1B molecules; high leaderboard MoleculeNet scores (BBBP 0.937, ClinTox 0.948). Cited as a SOTA ceiling we do not contest.}
+}
+
+@inproceedings{liao2023equiformer,
+  title     = {Equiformer: Equivariant Graph Attention Transformer for 3D Atomistic Graphs},
+  author    = {Liao, Yi-Lun and Smidt, Tess},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023},
+  eprint    = {2206.11990},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2206.11990},
+  note      = {Equiformer: SE(3)/E(3)-equivariant graph-attention transformer; QM9 dipole MAE $\sim$0.011--0.012~D. The equivariant-geometry SOTA ceiling we do not contest.}
+}
+
+@inproceedings{lu2025spaceformer,
+  title     = {Beyond Atoms: Enhancing Molecular Pretrained Representations with 3D Space Modeling},
+  author    = {Lu, Shuqi and others},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {2025},
+  eprint    = {2503.10489},
+  archivePrefix = {arXiv},
+  url       = {https://proceedings.mlr.press/v267/lu25e.html},
+  note      = {SpaceFormer: grid-based 3D space modeling for molecular pretraining; cleaned-OOD BACE 0.966 / BBBP 0.907 vs Uni-Mol own-scaffold BBBP 0.729 (the $>$0.17 split-swing argument). Verify exact ICML/PMLR volume at camera-ready.}
+}
+
+@inproceedings{wang2023molgrapheval,
+  title     = {Evaluating Self-Supervised Learning for Molecular Graph Embeddings},
+  author    = {Wang, Hanchen and Kaddour, Jean and Liu, Shengchao and Tang, Jian and Lasenby, Joan and Liu, Qi},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS), Datasets and Benchmarks Track},
+  year      = {2023},
+  eprint    = {2206.08005},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{sun2022gnnpretrain,
+  title     = {Does {GNN} Pretraining Help Molecular Representation?},
+  author    = {Sun, Ruoxi and Dai, Hanjun and Yu, Adams Wei},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2022},
+  eprint    = {2207.06010},
+  archivePrefix = {arXiv}
+}
+
+@article{frozensmiles2026,
+  title   = {Do Frozen {SMILES} Foundation Embeddings Beat Fingerprints?},
+  author  = {{Anonymous}},
+  journal = {ChemRxiv preprint},
+  year    = {2026},
+  note    = {DOI: 10.26434/chemrxiv.15004188/v1; author list not retrieved (ChemRxiv page returned HTTP 403)---fill before camera-ready},
+  url     = {https://doi.org/10.26434/chemrxiv.15004188/v1}
+}
+
+@article{burns2025chemeleon,
+  title   = {Deep Learning Foundation Models from Classical Molecular Descriptors},
+  author  = {Burns, Jackson W. and Zalte, Akshat Shirish and Abreu, Charlles R. A. and Sieg, Jochen and Feldmann, Christian and Mathea, Miriam and Green, William H.},
+  journal = {arXiv preprint arXiv:2506.15792},
+  year    = {2025},
+  note    = {CheMeleon},
+  eprint  = {2506.15792},
+  archivePrefix = {arXiv}
 }

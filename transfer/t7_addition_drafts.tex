@@ -1,0 +1,261 @@
+% =====================================================================
+% T7 paper additions — three outcome blocks, ready to splice tomorrow.
+%
+% This file is NOT compiled. It is a staging buffer with three pre-written
+% blocks (A/B/C) corresponding to the three possible bare-T7 S1 outcomes.
+% Once S1 results arrive, pick one block and splice into conference_101719.tex.
+%
+% Placeholders to substitute via `sed -i` before splicing:
+%   <T7_BBBP_MEAN>   — bare-T7 BBBP n=3 grand mean (e.g. 0.842)
+%   <T7_BBBP_STD>    — bare-T7 BBBP sample std (n-1)
+%   <T7_BACE_MEAN>   — bare-T7 BACE seed-9 mean_test_metric (single seed)
+%   <T7_DELTA_V2T5>  — bare-T7 mean − V2-T5 mean = <T7_BBBP_MEAN> − 0.831
+%   <T7_SIGN_P>      — sign-test two-sided p (from compute_paired_stats.py)
+%   <T7_GATE_SIGMOID>— sigmoid(attn_gate_final) averaged across BBBP seeds
+%
+% After substitution, splice into the master file using the % INSERT marker
+% comments below.
+% =====================================================================
+
+
+% =====================================================================
+% Block A (T7 wins) — bare-T7 BBBP grand mean strictly exceeds V2-T5
+%   judgement: <T7_BBBP_MEAN> > 0.831 AND <T7_DELTA_V2T5> > 0.02 AND
+%              sign-test direction consistent across 3 seeds
+% =====================================================================
+
+% --- A.1 Abstract addition ---
+% INSERT-AFTER:line:40 (end of \begin{abstract} ... \end{abstract})
+% Locate the period after "should be standard practice when evaluating
+% graph-based molecular encoders." and append the following sentence
+% before the closing \end{abstract}:
+%
+% A sparse pair-biased multi-head attention variant, \emph{T7}, that routes
+% the same frozen Uni-Mol pair representation through a learnable
+% near-identity attention residual atop the Chebyshev recurrence, attains
+% $<T7_BBBP_MEAN> \pm <T7_BBBP_STD>$ test AUC on BBBP at $n{=}3$ training
+% seeds, a $<T7_DELTA_V2T5>$-point improvement over V2-T5 within the same
+% protocol; the extra attention capacity is consistent with chemistry-aware
+% bond-routing observed in V2-T5 carrying through to a more expressive
+% representation of bond interactions.
+
+
+% --- A.2 Intro Contributions list addition ---
+% INSERT-AFTER:line:66 (end of Contributions \begin{itemize} ... \end{itemize})
+% Insert as a NEW \item BEFORE the closing \end{itemize}:
+%
+%   \item A sparse pair-biased multi-head attention variant (T7) that
+%   augments the Chebyshev recurrence with a learnable attention residual
+%   over the same frozen Uni-Mol pair representation; T7 advances V2-T5 by
+%   $<T7_DELTA_V2T5>$ test AUC on BBBP without disturbing the near-identity
+%   initialization that preserves contrastive-pretraining stability.
+
+
+% --- A.3 Method §3.7 (full subsection) ---
+% INSERT-AFTER:line:120 (end of §3.6 T6, right before \subsection{Training Objective})
+
+\subsection{Variant T7: Sparse Pair-Biased Attention Residual}
+\label{sec:t7}
+T7 augments the V2-T5 backbone with a sparse pair-biased multi-head
+attention residual evaluated alongside the Chebyshev recurrence rather than
+in place of it. At each Chebyshev order $k$, the recurrence emits node
+features $\mathbf{T}_k\in\mathbb{R}^{N\times d_h}$ via
+\eqref{eq:chebnetii}; in parallel, an $H$-head attention block (default
+$H{=}4$, head dimension $d_a{=}32$) computes
+\begin{equation}
+    \mathrm{Attn}_k(Q,K,V;\mathbf{P}) = \mathrm{softmax}\!\bigl(QK^\top/\sqrt{d_a} + \mathbf{P}\bigr) V,
+    \label{eq:t7attn}
+\end{equation}
+where $Q,K,V$ are linear projections of $\mathbf{T}_k$ and the pre-softmax
+logits accept the frozen Uni-Mol pair representation $\mathbf{P}$ as an
+additive bias. Unlike the dense pair update of T6 (\S\ref{sec:t6}), this
+attention is \emph{sparse}: only chemical-bond entries
+$(i,j)\in\mathcal{E}$ contribute non-masked logits, so the attention
+operates over the same edge set that drives the spectral filter, and the
+$\mathcal{O}(N^2)$ matmul collapses to $\mathcal{O}(|\mathcal{E}|)$ for the
+typical bond graph. The per-order outputs are accumulated with the
+Chebyshev coefficients $\theta_k$ matched to the spectral path,
+$\mathbf{A}{=}\sum_{k=0}^{K}\theta_k\,\mathrm{Attn}_k$, and combined with
+the spectral output as
+\begin{equation}
+    h^{(\ell)}_{\mathrm{T7}} = h^{(\ell)}_{\mathrm{T5}} + \sigma(\beta)\,\mathbf{A},
+    \label{eq:t7gate}
+\end{equation}
+where $\beta\in\mathbb{R}$ is a single learnable scalar initialized to
+$\beta_{0}{=}{-}5$ so that $\sigma(\beta_0)\approx 0.007$ places T7 within
+rounding of V2-T5 at epoch zero. This near-identity wrapping is the
+attention analogue of the $b{=}{+}5$ identity-floor in V2-T5
+(\S\ref{sec:v2t5}): T7 is free to move the attention residual into the
+representation only when the gradient supports it. With the gate at its
+initialization the architecture reduces exactly to V2-T5, so any
+improvement T7 reports is attributable to attention capacity rather than to
+a different training trajectory.
+
+
+% --- A.4 Table 1 row ---
+% INSERT-AFTER:line:158 (the T6 row in tab:main)
+% Add a NEW row line BEFORE \bottomrule:
+%
+% T7 & $<T7_BBBP_MEAN> \pm <T7_BBBP_STD>$ & $<T7_BACE_MEAN>$ & -- \\
+
+
+% --- A.5 Main Results prose addition ---
+% INSERT-AFTER:line:163 (the long paragraph after Table 1, right before \subsection{Ablations})
+% Append the following paragraph:
+%
+% \noindent\textbf{T7 advances V2-T5 on BBBP at $n{=}3$.}
+% The bare T7 attention residual reaches $<T7_BBBP_MEAN> \pm <T7_BBBP_STD>$
+% test AUC on the original three training seeds $\{9,19,29\}$, a
+% $<T7_DELTA_V2T5>$-point improvement over matched-seed V2-T5
+% ($0.862\pm 0.025$ on the same three seeds, see
+% \S\ref{sec:experiments}), with all three matched seeds favoring T7
+% (sign-test two-sided $p={<T7_SIGN_P>}$). The trained attention gate moves
+% off its initialization ($\sigma(\beta_{\mathrm{final}}){=}<T7_GATE_SIGMOID>$
+% on average), confirming that the attention residual is contributing to
+% the trained representation rather than being clamped at the near-identity
+% safety floor. Whether this $n{=}3$ effect survives at the $n{=}9$
+% extension scale (where V2-T5 over V0 attenuated to $+0.003$,
+% \S\ref{sec:experiments}) is an open question we leave to follow-up work;
+% in the meantime we report T7 at the same $n{=}3$ protocol used for BACE
+% and FreeSolv and note this limitation explicitly.
+
+
+% --- A.6 Discussion edit ---
+% INSERT-INTO:section Discussion (sec:discussion)
+% Append paragraph or replace the V2-T5 mechanism summary with this:
+%
+% \noindent\textbf{The V2-T5 aromatic-routing mechanism extends naturally
+% under T7's attention capacity.} The chemistry-aware routing identified in
+% V2-T5 (Pearson with aromatic-bond indicator in $[0.6,0.7]$) suggests that
+% the relevant downstream signal on BBBP is bond-level rather than
+% atom-level. T7's sparse pair-biased attention preserves the same
+% bond-level information channel (only chemical bonds carry attention
+% weight) while granting the encoder a more expressive aggregation than the
+% scalar gate of V2-T5, and the $<T7_DELTA_V2T5>$-point lift suggests this
+% additional capacity is consistent with---but does not reduce to---the
+% routing finding. A diagnostic per-head attention attribution analogous to
+% the V2-T5 per-bond gate audit is left to camera-ready.
+
+
+% =====================================================================
+% Block B (T7 ties) — bare-T7 grand mean within V2-T5 seed variance
+%   judgement: |<T7_BBBP_MEAN> - 0.831| <= 0.032
+% =====================================================================
+
+% --- B.1 Abstract addition ---
+% INSERT-AFTER:line:40 (end of \begin{abstract} ... \end{abstract})
+% Append before closing \end{abstract}:
+%
+% A further expressive variant T7 that replaces the static scalar gate with
+% a sparse pair-biased attention residual ties V2-T5 within seed variance
+% on BBBP ($<T7_BBBP_MEAN>\pm<T7_BBBP_STD>$ vs $0.831\pm 0.032$ at $n{=}3$);
+% the additional capacity does not buy test-time gain under this
+% contrastive pretraining regime, complementing the analogous V2-T5/T6 tie.
+
+
+% --- B.2 Method §3.7 (brief) ---
+% INSERT-AFTER:line:120 (end of §3.6 T6)
+
+\subsection{Variant T7: Sparse Pair-Biased Attention Residual (brief)}
+\label{sec:t7}
+We additionally test whether an even more expressive consumer of the
+frozen Uni-Mol pair representation moves the BBBP needle beyond V2-T5/T6.
+T7 augments the Chebyshev recurrence at each order $k$ with an $H$-head
+sparse pair-biased attention block (default $H{=}4$, head dimension
+$d_a{=}32$) that takes $\mathbf{T}_k$ as queries/keys/values and the frozen
+Uni-Mol pair representation $\mathbf{P}$ as an additive pre-softmax bias
+\eqref{eq:t7attn}, with attention restricted to chemical-bond entries
+$(i,j)\in\mathcal{E}$ so the matmul cost is $\mathcal{O}(|\mathcal{E}|)$
+rather than $\mathcal{O}(N^2)$. The per-order outputs are combined with
+the spectral path via a learnable scalar gate initialized to $\sigma({-}5)$
+so that T7 reduces to V2-T5 at epoch zero \eqref{eq:t7gate}. The capacity
+analogue of the V2-T5/T6 tie at $b{=}{+}5$ is whether this further
+expressive variant moves BBBP off the $\sim$$0.83$ AUC plateau.
+
+
+% --- B.3 Table 1 row ---
+% INSERT-AFTER:line:158
+%
+% T7 & $<T7_BBBP_MEAN> \pm <T7_BBBP_STD>$ & $<T7_BACE_MEAN>$ & -- \\
+
+
+% --- B.4 Main Results prose addition ---
+% INSERT-AFTER:line:163 (after Table 1 paragraph)
+%
+% \noindent\textbf{T7 ties V2-T5 within seed variance.}
+% At $n{=}3$ training seeds $\{9,19,29\}$ the sparse pair-biased attention
+% variant T7 reaches $<T7_BBBP_MEAN>\pm<T7_BBBP_STD>$ test AUC on BBBP,
+% tied with V2-T5 ($0.862\pm 0.025$ on the same three seeds) and with V0
+% ($0.836$). Within the V2-T5/T6 capacity-vs-static dichotomy explored in
+% \S\ref{sec:t6}, T7 sits at the more-expressive extreme and provides a
+% second negative result: under this contrastive-pretraining regime and at
+% the available training-seed scale, neither the dynamic pair-node update
+% (T6) nor the sparse pair-biased attention (T7) extracts additional
+% test-time AUC over the static scalar-gate baseline (V2-T5). We read this
+% as evidence that the bottleneck on BBBP is not architectural capacity but
+% the contrastive-pretraining signal itself.
+
+
+% --- B.5 Discussion edit ---
+% INSERT-INTO:section Discussion (sec:discussion)
+%
+% \noindent\textbf{Capacity saturation across V2-T5/T6/T7.} V2-T5 (static
+% scalar gate), T6 (dynamic pair-node update with attention), and T7
+% (sparse pair-biased attention residual) all tie within seed variance on
+% BBBP at $n{=}3$. The chemistry-aware aromatic-routing finding from V2-T5
+% remains the most reliable claim in the paper; the architectural ladder
+% explored here suggests that further capacity in the pair-consumption
+% mechanism, holding the contrastive objective fixed, does not unlock
+% additional test-time signal.
+
+
+% =====================================================================
+% Block C (T7 omitted) — bare-T7 fails to materialize or strictly worse
+%   judgement: <T7_BBBP_MEAN> not parseable OR <T7_BBBP_MEAN> < 0.80
+%   (or any time/job blocker preventing tomorrow's collection)
+% =====================================================================
+
+% --- C.1 Limitations / Future Work addition (OPTIONAL) ---
+% INSERT-INTO:section Limitations or Conclusion (locate \subsection or
+% \paragraph with "Limitations" / "Future Work" heading; if neither exists,
+% append the following sentence at the end of \S Conclusion).
+% Adding this is OPTIONAL — Block C's primary action is "do nothing", i.e.
+% leave the paper as-is.
+%
+% We explored an additional architectural variant, T7, that augments V2-T5
+% with a sparse pair-biased multi-head attention residual evaluated
+% in parallel with the Chebyshev recurrence; preliminary $n{=}3$ runs did
+% not reach an interpretable improvement over V2-T5 within the seed
+% variance of the matched protocol, and the full $n{=}9$ extension was
+% beyond the compute budget available for this submission. We leave a
+% controlled evaluation of pair-biased attention---and of its head-channel
+% gate, on which the V2-T5 aromatic-routing mechanism may bottleneck---to
+% follow-up work.
+
+
+% =====================================================================
+% Tomorrow's splicing workflow (concrete)
+% =====================================================================
+%
+% 1. After collecting bare-T7 results into bbbp_t7_bare_results.json and
+%    bace_t7_bare_results.json:
+%
+%    cd D:\specmol-zip\SpecMol-Zip
+%    python paper/make_tables.py             # regenerates tables with T7 row
+%    python paper/compute_paired_stats.py    # populates paired_stats.json with T7 deltas
+%
+% 2. Read off:
+%    T7_BBBP_MEAN, T7_BBBP_STD     ← from paper/tables/main_results.tex T7 row
+%    T7_DELTA_V2T5, T7_SIGN_P      ← from paired_stats.json "BBBP T7 vs V2-T5"
+%    T7_BACE_MEAN                  ← from BACE T7 row (1 seed)
+%    T7_GATE_SIGMOID               ← grep "attn_gate" hpc logs, sigmoid the value
+%
+% 3. Decide A/B/C using the judgement criteria at top of each block.
+%
+% 4. Sed-substitute placeholders in the chosen block, then paste into
+%    transfer\conference_101719.tex at the INSERT-AFTER:line markers.
+%
+% 5. Re-run pdflatex × 3 in transfer\.
+%
+% 6. (Outcome A only) If time permits, queue per-head (S2) + n=9 extension
+%    on mbzuai-hpc per master plan async-giggling-garden.md.

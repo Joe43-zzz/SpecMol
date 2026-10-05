@@ -62,10 +62,11 @@ def load_task_split(root, task, split):
     return load_pyg_inmemory_split(root, task, split)
 
 
-def run_one_seed(task, pretrain_seed, device, t7=False, t6=False, data_root=None,
-                 pair_dim=PAIR_DIM_DEFAULT):
-    if t7 and t6:
-        raise ValueError("t6 and t7 are mutually exclusive")
+def run_one_seed(task, pretrain_seed, device, t7=False, t6=False, t8=False,
+                 t8_pair_update="qk_hadamard", t8_num_layers=4, bias_init=5.0,
+                 data_root=None, pair_dim=PAIR_DIM_DEFAULT):
+    if sum([bool(t7), bool(t6), bool(t8)]) > 1:
+        raise ValueError("t6 / t7 / t8 are mutually exclusive")
     set_seed(pretrain_seed)
 
     if data_root is None:
@@ -81,7 +82,9 @@ def run_one_seed(task, pretrain_seed, device, t7=False, t6=False, data_root=None
     fp_type = "tri"
     alpha = 1
 
-    if t7:
+    if t8:
+        variant_tag = "T8" if t8_pair_update != "logits" else "T8-logits"
+    elif t7:
         variant_tag = "T7"
     elif t6:
         variant_tag = "T6"
@@ -89,7 +92,7 @@ def run_one_seed(task, pretrain_seed, device, t7=False, t6=False, data_root=None
         variant_tag = "V2-T5"
     print(f"\n{'='*60}")
     print(f"{variant_tag} PRETRAIN task={task} seed={pretrain_seed} "
-          f"data_root={data_root} pair_dim={pair_dim}")
+          f"data_root={data_root} pair_dim={pair_dim} bias_init={bias_init}")
     print(f"{'='*60}")
 
     data = load_task_split(data_root, task, "all")
@@ -98,6 +101,8 @@ def run_one_seed(task, pretrain_seed, device, t7=False, t6=False, data_root=None
         is_bns=False, act_fn="relu", type=fp_type, pair_dim=pair_dim,
         t6=t6,
         t7=t7, t7_num_heads=4, t7_head_dim=32, t7_dropout=0.0, t7_init_std=0.02,
+        t8=t8, t8_num_layers=t8_num_layers, t8_pair_update=t8_pair_update,
+        bias_init=bias_init,
     ).to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-7)
 
@@ -239,6 +244,22 @@ def run_one_seed(task, pretrain_seed, device, t7=False, t6=False, data_root=None
     if t7 and t7_gate_final is not None:
         result["t7_gate_final"] = [round(g, 6) for g in t7_gate_final]
 
+    # T8 training-health readout (review H3): at the default saturated bias the
+    # pair side barely learns, so record the per-layer ReZero gates so a dead
+    # co-update is visible without re-running. node_gate/pair_gate must move off 0.
+    if t8:
+        try:
+            stack = model.encoder.prop1.pair_coupdate
+            result["t8_gates_final"] = stack.gate_values()
+            result["t8_pair_update"] = t8_pair_update
+            result["t8_num_layers"] = t8_num_layers
+            pg = [g["pair_gate"] for g in result["t8_gates_final"]]
+            ng = [g["node_gate"] for g in result["t8_gates_final"]]
+            print(f"  [t8-gates] node_gate={[round(v,4) for v in ng]} "
+                  f"pair_gate={[round(v,4) for v in pg]}")
+        except Exception as e:
+            print(f"  [t8-gates] failed to read co-update gates: {e}")
+
     if os.path.exists(ckpt_path):
         os.remove(ckpt_path)
 
@@ -256,6 +277,19 @@ if __name__ == "__main__":
                         help="Use T7 variant (V2-T5 + pair-biased attention with per-head gates).")
     parser.add_argument("--t6", action="store_true",
                         help="Use T6 variant (V2-T5 + iterative pair-node update).")
+    parser.add_argument("--t8", action="store_true",
+                        help="Use T8 variant (V2-T5 + faithful-ish Uni-Mol atom<->pair co-update "
+                             "stack). Mutually exclusive with --t6/--t7.")
+    parser.add_argument("--t8_pair_update", type=str, default="qk_hadamard",
+                        choices=["qk_hadamard", "qk_outer", "logits"],
+                        help="T8 atom->pair update: qk_hadamard (multi-channel; qk_outer is a "
+                             "deprecated alias) or logits (scalar-per-head ablation).")
+    parser.add_argument("--t8_num_layers", type=int, default=4,
+                        help="T8 co-update stack depth (default 4).")
+    parser.add_argument("--bias_init", type=float, default=5.0,
+                        help="PairToEdgeWeight output-bias init. Default 5.0 (sigmoid~0.993). "
+                             "Use 1.0 for T8 to escape sigmoid saturation so the pair side learns "
+                             "(review H3). Must match the variant it is compared against.")
     parser.add_argument("--data-root", type=str, default=None,
                         help="Root dir containing processed/{task}_{train,valid,test,all}.pt. "
                              "Defaults to down_task_{task}_unimol_v2.")
@@ -269,14 +303,22 @@ if __name__ == "__main__":
     task = args.task
     data_root = args.data_root or default_data_root(task)
 
-    if args.t7:
+    if args.t8:
+        variant_label = "T8" if args.t8_pair_update != "logits" else "T8-logits"
+    elif args.t7:
         variant_label = "T7"
     elif args.t6:
         variant_label = "T6"
     else:
         variant_label = "V2-T5"
+    # T8 result filenames: {task}_t8_results.json (qk_hadamard) /
+    # {task}_t8_logits_results.json (ablation). These are what the aggregator
+    # ('t8' / 't8_logits' variants) looks for.
     if args.results_path:
         results_path = args.results_path
+    elif args.t8:
+        suffix = "t8" if args.t8_pair_update != "logits" else "t8_logits"
+        results_path = f"{task}_{suffix}_results.json"
     elif args.t7:
         results_path = f"{task}_t7_bare_results.json"
     elif args.t6:
@@ -311,7 +353,9 @@ if __name__ == "__main__":
     for s in seeds:
         result = run_one_seed(
             task=task, pretrain_seed=s, device=device,
-            t7=args.t7, t6=args.t6,
+            t7=args.t7, t6=args.t6, t8=args.t8,
+            t8_pair_update=args.t8_pair_update, t8_num_layers=args.t8_num_layers,
+            bias_init=args.bias_init,
             data_root=data_root, pair_dim=args.pair_dim,
         )
         all_results["results_per_seed"][f"seed_{s}"] = result

@@ -30,6 +30,7 @@ EPOCHS="${EPOCHS:-50}"
 LR="${LR:-1e-4}"
 BATCH_SIZE="${BATCH_SIZE:-16}"
 OUT="${OUT:-unimol_finetune_results.json}"
+BOOTSTRAP="${BOOTSTRAP:-}"   # set BOOTSTRAP="--bootstrap" for real per-seed variance
 
 mkdir -p hpc/logs hpc/results
 
@@ -61,6 +62,6 @@ python reproduce_unimol_finetune.py \
   --epochs "$EPOCHS" \
   --lr "$LR" \
   --batch_size "$BATCH_SIZE" \
-  --out "$OUT"
+  --out "$OUT" $BOOTSTRAP
 
 echo "DONE -> $OUT"

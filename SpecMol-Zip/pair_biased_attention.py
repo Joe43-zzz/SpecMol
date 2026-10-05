@@ -44,8 +44,16 @@ class PairBiasedSparseAttention(nn.Module):
 
     def __init__(self, node_dim, pair_dim=64, num_heads=4, head_dim=32,
                  dropout=0.0, init_std=0.02, K_steps=10, use_layernorm=True,
-                 gate_init=-2.0):
+                 gate_init=-2.0, force_inject=False):
         super().__init__()
+        # force_inject (forced-injection ablation): when True, bypass the
+        # per-head residual gate in forward() so the attention output enters
+        # the trunk at full strength and cannot be learned back toward zero.
+        # Tests whether T7's observed inertness (gate freezes at sigmoid~0.12
+        # across every seed/dataset) is an optimization choice rather than a
+        # benchmark property. attn_gate is still registered (diagnostics read
+        # it) but unused in this mode.
+        self.force_inject = bool(force_inject)
         self.node_dim = node_dim
         self.pair_dim = pair_dim
         self.H = num_heads
@@ -173,7 +181,10 @@ class PairBiasedSparseAttention(nn.Module):
         # Per-head gate: shut heads independently. A gate driven to -inf zeroes
         # that head's block exactly here, and out_proj is bias-free, so the
         # attention contribution vanishes exactly (VeriMAP VF-equiv floor).
-        out = out * torch.sigmoid(self.attn_gate).view(1, self.H, 1)
+        # force_inject ablation: skip the gate entirely (gate multiplier == 1)
+        # so the optimizer cannot decay the attention pathway to near-zero.
+        if not self.force_inject:
+            out = out * torch.sigmoid(self.attn_gate).view(1, self.H, 1)
         out = out.reshape(N, self.attn_dim)
         out = self.out_proj(out)                          # bias-free back to node_dim
 

@@ -94,10 +94,10 @@ def _bbbp_per_seed_means(block: dict) -> list[float]:
 def parse_bbbp(data: dict) -> dict[str, tuple[float, float]]:
     out = {}
     for key, label in [
-        ("v0_baseline", "V0"),
-        ("v2_t5_static_pair", "V2-T5"),
+        ("v0_baseline", "2D-Only"),
+        ("v2_t5_static_pair", "SEG"),
         ("t6_dynamic_pair_node", "T6"),
-        ("t7", "T7"),  # bare-T7 if merged into bbbp_all_results.json (legacy schema)
+        ("t7", "PBA"),  # bare-T7 if merged into bbbp_all_results.json (legacy schema)
     ]:
         block = data.get(key)
         if not block:
@@ -150,7 +150,7 @@ def _bace_v0_fp_per_seed_means(block: dict) -> list[float]:
 
 def parse_bace_v0_fp(data: dict) -> dict[str, tuple[float, float]]:
     out = {}
-    for key, label in [("baseline", "V0"), ("fp_only", "FP-only")]:
+    for key, label in [("baseline", "2D-Only"), ("fp_only", "FP-only")]:
         block = data.get(key)
         if not block:
             continue
@@ -171,13 +171,13 @@ def parse_bace_full(data: dict) -> dict[str, tuple[float, float]]:
     src = data.get("variants", data)
     # Accept both "v2t5" (collector) and "v2_t5" (older legacy).
     key_aliases = {
-        "v0": "V0",
-        "v2t5": "V2-T5",
-        "v2_t5": "V2-T5",
+        "v0": "2D-Only",
+        "v2t5": "SEG",
+        "v2_t5": "SEG",
         "t6": "T6",
-        "t7": "T7",  # bare-T7 from S1 (collector output, same schema as v2t5)
-        "t8": "T8",
-        "t8_logits": "T8-logits",
+        "t7": "PBA",  # bare-T7 from S1 (collector output, same schema as v2t5)
+        "t8": "APC",
+        "t8_logits": "APC-logits",
         "fp_only": "FP-only",
     }
     for variant_key, label in key_aliases.items():
@@ -210,9 +210,9 @@ def _freesolv_per_seed(block: dict) -> list[float]:
 def parse_freesolv(baseline: dict, v2: dict) -> dict[str, tuple[float, float]]:
     out = {}
     if baseline:
-        out["V0"] = _stats(_freesolv_per_seed(baseline))
+        out["2D-Only"] = _stats(_freesolv_per_seed(baseline))
     if v2:
-        out["V2-T5"] = _stats(_freesolv_per_seed(v2))
+        out["SEG"] = _stats(_freesolv_per_seed(v2))
     return out
 
 
@@ -231,12 +231,12 @@ def parse_regression_matrix(task: str) -> dict[str, tuple[float, float]]:
     v2_name = ("freesolv_unimol_v2t5_results.json" if task == "freesolv"
                else f"{task}_v2t5_results.json")
     sources = [
-        ("V0", f"{task}_v0_results.json"),
-        ("V2-T5", v2_name),
+        ("2D-Only", f"{task}_v0_results.json"),
+        ("SEG", v2_name),
         ("T6", f"{task}_t6_results.json"),
-        ("T7", f"{task}_t7_bare_results.json"),
-        ("T8", f"{task}_t8_results.json"),
-        ("T8-logits", f"{task}_t8_logits_results.json"),
+        ("PBA", f"{task}_t7_bare_results.json"),
+        ("APC", f"{task}_t8_results.json"),
+        ("APC-logits", f"{task}_t8_logits_results.json"),
     ]
     out: dict[str, tuple[float, float]] = {}
     for label, fname in sources:
@@ -255,7 +255,8 @@ def render_cls_table(bbbp: dict, bace: dict,
     Includes ClinTox/Tox21 columns when data is present; falls back to the
     original 2-column layout otherwise.
     """
-    variants = ["V0", "FP-only", "RF", "Chemprop", "Uni-Mol", "V2-T5", "T7", "T8", "T8-logits"]
+    variants = ["2D-Only", "FP-only", "RF", "Chemprop", "Uni-Mol-emb$+$RF",
+                "Uni-Mol (FT)", "SEG", "PBA", "APC", "APC-logits"]
     clintox = clintox or {}
     tox21 = tox21 or {}
     has_ctox = bool(clintox)
@@ -273,15 +274,34 @@ def render_cls_table(bbbp: dict, bace: dict,
     col_spec = "l" + "c" * len(columns)
     header = " & ".join(["Variant"] + columns) + " \\\\"
 
+    has_ft = any("Uni-Mol (FT)" in d for d in column_data)
+    ft_clause = (" ``Uni-Mol (FT)'' is the end-to-end finetuned Uni-Mol on the "
+                 "identical split (MolTrain exposes no seed control: cells with "
+                 "std${\\approx}0.000$ are deterministic single-split internal-"
+                 "5-fold-CV point estimates, \\emph{not} a zero-variance claim; "
+                 "only BBBP and ClinTox showed seed variance). The two "
+                 "``$\\pm$'' semantics differ: deep-variant cells "
+                 "(2D-Only/SEG/PBA) report \\emph{seed} variance, whereas "
+                 "Uni-Mol~(FT) cells report training-set-resampling "
+                 "sensitivity (internal 5-fold CV), so the two columns' error "
+                 "bars are not directly comparable." if has_ft else "")
+    caption = (
+        "\\caption{Classification test AUC, mean $\\pm$ sample std over per-seed "
+        "means under matched Uni-Mol scaffold-fold split. BBBP 2D-Only/SEG use "
+        "$n{=}9$ training seeds; BBBP PBA and BACE/ClinTox deep cells use "
+        "$n{=}3$; RF is a Morgan$+$RDKit-2D random forest (the descriptor recipe "
+        "of \\citet{deng2023systematic}, 30 restarts) recomputed on the model's "
+        "\\emph{exact} test split. ClinTox cells report macro-averaged AUC across "
+        "its two constituent tasks. The ``Uni-Mol-emb$+$RF'' row is a frozen "
+        "Uni-Mol embedding with an RF head (a probe, \\emph{not} Uni-Mol's own "
+        "performance)." + ft_clause + "}"
+    )
+
     lines = [
         "% Auto-generated by paper/make_tables.py -- do not edit by hand.",
         "\\begin{table}[t]",
         "\\centering",
-        "\\caption{Classification test AUC, mean $\\pm$ sample std over per-seed "
-        "means under matched Uni-Mol scaffold-fold split. BBBP V0/V2-T5 use "
-        "$n{=}9$ training seeds; BBBP T7 and BACE/ClinTox deep cells use "
-        "$n{=}3$; RF uses the 30-seed protocol of \\citet{deng2023systematic}. "
-        "ClinTox cells report macro-averaged AUC across its two constituent tasks.}",
+        caption,
         "\\label{tab:classification}",
         f"\\begin{{tabular}}{{{col_spec}}}",
         "\\toprule",
@@ -310,7 +330,8 @@ def render_reg_table(freesolv: dict,
 
     Includes ESOL/Lipo columns when data is present; FreeSolv-only otherwise.
     """
-    variants = ["V0", "RF", "Chemprop", "Uni-Mol", "V2-T5", "T7", "T8", "T8-logits"]
+    variants = ["2D-Only", "RF", "Chemprop", "Uni-Mol-emb$+$RF", "Uni-Mol (FT)",
+                "SEG", "PBA", "APC", "APC-logits"]
     esol = esol or {}
     lipo = lipo or {}
     has_esol = bool(esol)
@@ -328,16 +349,35 @@ def render_reg_table(freesolv: dict,
     col_spec = "l" + "c" * len(columns)
     header = " & ".join(["Variant"] + columns) + " \\\\"
 
+    has_ft = any("Uni-Mol (FT)" in d for d in column_data)
+    ft_clause = (" ``Uni-Mol (FT)'' is the end-to-end Uni-Mol finetune; its "
+                 "std${\\approx}0.000$ cells are deterministic single-split "
+                 "internal-5-fold-CV point estimates (MolTrain has no seed "
+                 "control), not a zero-variance claim. The two ``$\\pm$'' "
+                 "semantics differ: deep-variant cells (2D-Only/SEG/PBA) "
+                 "report \\emph{seed} variance, whereas Uni-Mol~(FT) cells "
+                 "report training-set-resampling sensitivity (internal 5-fold "
+                 "CV), so the two columns' error bars are not directly "
+                 "comparable." if has_ft else "")
+    caption = (
+        "\\caption{Regression test RMSE (lower is better; mean $\\pm$ sample std "
+        "over per-seed means under matched scaffold splits). FreeSolv 2D-Only/SEG use "
+        "$n{=}9$ seeds; ESOL/Lipo deep cells and PBA use $n{=}3$; RF is a "
+        "Morgan$+$RDKit-2D random forest (Deng2023 recipe, 30 restarts) on the "
+        "model's \\emph{exact} test fold. "
+        "all SEG cells (FreeSolv/ESOL/Lipo) use Uni-Mol pair representations; the "
+        "FreeSolv PBA cell alone uses an RDKit-GBF pair surrogate (\\S\\ref{sec:v2t5}). RMSE is on the standardized "
+        "label scale (std${\\approx}1$ for all three regression sets; FreeSolv is thus not in kcal/mol---its raw "
+        "scale is $\\sigma{\\approx}3.8$ kcal/mol, so a standardized RMSE of $0.7$ is ${\\approx}2.7$ kcal/mol and "
+        "is not comparable to the kcal/mol literature). The ``Uni-Mol-emb$+$RF'' row is the frozen-embedding "
+        "probe." + ft_clause + "}"
+    )
+
     lines = [
         "% Auto-generated by paper/make_tables.py -- do not edit by hand.",
         "\\begin{table}[t]",
         "\\centering",
-        "\\caption{Regression test RMSE (lower is better; mean $\\pm$ sample std "
-        "over per-seed means under matched scaffold splits). FreeSolv V0/V2-T5 use "
-        "$n{=}9$ seeds; ESOL/Lipo deep cells and T7 use $n{=}3$; RF uses $n{=}30$. "
-        "all V2-T5 cells (FreeSolv/ESOL/Lipo) use Uni-Mol pair representations; the "
-        "FreeSolv T7 cell alone uses an RDKit-GBF pair surrogate (\\S\\ref{sec:v2t5}). RMSE is on the standardized "
-        "label scale (std${\\approx}1$ for all three regression sets; FreeSolv is thus not in kcal/mol).}",
+        caption,
         "\\label{tab:regression}",
         f"\\begin{{tabular}}{{{col_spec}}}",
         "\\toprule",
@@ -418,8 +458,25 @@ def parse_matched_baselines(data: dict) -> tuple[dict, dict]:
     return rf_out, unimol_out
 
 
+def parse_unimol_finetune(data: dict) -> dict[str, tuple[float, float]]:
+    """Parse unimol_finetune_results.json -> {dataset: (mean, std)}.
+
+    Schema (reproduce_unimol_finetune.py): {dataset: {..., "mean": {roc_auc|rmse: ..},
+    "std": {..}}}. The end-to-end Uni-Mol finetune on the model's exact split; uses
+    rmse for regression, roc_auc (macro over tasks for multi-label) for classification.
+    """
+    out: dict[str, tuple[float, float]] = {}
+    for ds, blk in data.items():
+        if not isinstance(blk, dict) or "mean" not in blk:
+            continue
+        metric = "rmse" if ds in REGRESSION_DS else "roc_auc"
+        if metric in blk["mean"]:
+            out[ds] = (blk["mean"][metric], blk.get("std", {}).get(metric, 0.0))
+    return out
+
+
 def render_main_table(bbbp: dict, bace: dict, freesolv: dict) -> str:
-    variants = ["V0", "FP-only", "RF", "Chemprop", "V2-T5", "T6", "T7"]
+    variants = ["2D-Only", "FP-only", "RF", "Chemprop", "SEG", "T6", "PBA"]
     lines = [
         "% Auto-generated by paper/make_tables.py — do not edit by hand.",
         "\\begin{table}[t]",
@@ -505,7 +562,19 @@ def main() -> None:
             if ds_key in rf_m:
                 table["RF"] = rf_m[ds_key]
             if ds_key in unimol_m:
-                table["Uni-Mol"] = unimol_m[ds_key]
+                table["Uni-Mol-emb$+$RF"] = unimol_m[ds_key]
+
+    # End-to-end Uni-Mol FINETUNE (reproduce_unimol_finetune.py). Distinct from
+    # the frozen-embedding probe above: this is the same encoder's own supervised
+    # number on the identical split, so the table never conflates the two.
+    ft_raw = load("unimol_finetune_results.json")
+    if ft_raw:
+        ft = parse_unimol_finetune(ft_raw)
+        for ds_key, table in (("bbbp", bbbp), ("bace", bace),
+                              ("clintox", clintox),
+                              ("freesolv", freesolv), ("esol", esol), ("lipo", lipo)):
+            if ds_key in ft:
+                table["Uni-Mol (FT)"] = ft[ds_key]
 
     # Bare-T7 (HPC collector output, separate file per task).
     for table, json_name in (
@@ -514,25 +583,25 @@ def main() -> None:
         (clintox, "clintox_t7_bare_results.json"),
         (tox21, "tox21_t7_bare_results.json"),
     ):
-        if "T7" in table:
+        if "PBA" in table:
             continue
         t7_raw = load(json_name)
         t7_stats = parse_t7_collect_format(t7_raw) if t7_raw else None
         if t7_stats is not None:
-            table["T7"] = t7_stats
+            table["PBA"] = t7_stats
 
     for table, json_name in (
         (freesolv, "freesolv_t7_bare_results.json"),
         (esol, "esol_t7_bare_results.json"),
         (lipo, "lipo_t7_bare_results.json"),
     ):
-        if "T7" in table:
+        if "PBA" in table:
             continue
         t7_raw = load(json_name)
         if t7_raw:
             t7_seeds = _freesolv_per_seed(t7_raw)
             if t7_seeds:
-                table["T7"] = _stats(t7_seeds)
+                table["PBA"] = _stats(t7_seeds)
 
     # Bare-T8 (HPC collector output, classification), same schema as bare-T7.
     for table, json_name in (
@@ -540,12 +609,12 @@ def main() -> None:
         (bace, "bace_t8_bare_results.json"),
         (clintox, "clintox_t8_bare_results.json"),
     ):
-        if "T8" in table:
+        if "APC" in table:
             continue
         t8_raw = load(json_name)
         t8_stats = parse_t7_collect_format(t8_raw) if t8_raw else None
         if t8_stats is not None:
-            table["T8"] = t8_stats
+            table["APC"] = t8_stats
 
     # Tox21 is deferred from the 6-dataset matrix (Uni-Mol pair extraction
     # OOMs on its 7,831 molecules); we do not render a Tox21 column even
@@ -567,7 +636,7 @@ def main() -> None:
     for name, t in (("bbbp", bbbp), ("bace", bace), ("clintox", clintox),
                     ("tox21", tox21), ("freesolv", freesolv), ("esol", esol), ("lipo", lipo)):
         print(f"  {name:<9}: {list(t)}")
-    if "V2-T5" not in bace or "T6" not in bace:
+    if "SEG" not in bace or "T6" not in bace:
         print("[warn] BACE V2-T5 / T6 missing -- re-run HPC pipeline.")
 
 

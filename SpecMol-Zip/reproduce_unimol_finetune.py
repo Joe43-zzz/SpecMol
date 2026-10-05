@@ -129,11 +129,23 @@ def _set_global_seed(seed):
         pass
 
 
-def finetune_eval(smi_tr, y_tr, smi_te, y_te, task, seed, epochs, lr, batch_size):
-    """One end-to-end Uni-Mol finetune + eval on the held-out test split."""
+def finetune_eval(smi_tr, y_tr, smi_te, y_te, task, seed, epochs, lr, batch_size,
+                  bootstrap=False):
+    """One end-to-end Uni-Mol finetune + eval on the held-out test split.
+
+    If ``bootstrap`` is True the training set is resampled with replacement using
+    a ``seed``-seeded RNG, so repeated seeds produce genuine train-set-sensitivity
+    variance (MolTrain exposes no seed control, so without this the per-seed
+    metric is deterministic and its std is a fake 0). The held-out test set is
+    never resampled, so test metrics stay comparable across seeds and to RF."""
     from unimol_tools import MolTrain, MolPredict
 
     _set_global_seed(seed)
+    if bootstrap:
+        rng = np.random.RandomState(seed)
+        idx = rng.randint(0, len(smi_tr), size=len(smi_tr))
+        smi_tr = [smi_tr[i] for i in idx]
+        y_tr = y_tr[idx]
     umtask = _unimol_task(task, y_tr)
     workdir = Path(tempfile.mkdtemp(prefix=f"unimol_ft_{seed}_"))
     try:
@@ -169,7 +181,7 @@ def finetune_eval(smi_tr, y_tr, smi_te, y_te, task, seed, epochs, lr, batch_size
         shutil.rmtree(workdir, ignore_errors=True)
 
 
-def run(name, cfg, seeds, epochs, lr, batch_size):
+def run(name, cfg, seeds, epochs, lr, batch_size, bootstrap=False):
     smi, y, is_train, is_test = load_split(cfg)
     valid = np.array([Chem.MolFromSmiles(s) is not None for s in smi], dtype=bool)
     smi = [s for s, v in zip(smi, valid) if v]
@@ -187,7 +199,8 @@ def run(name, cfg, seeds, epochs, lr, batch_size):
     t0 = time.time()
     for s in seeds:
         out["seeds"][str(s)] = finetune_eval(smi_tr, y_tr, smi_te, y_te,
-                                              cfg["task"], s, epochs, lr, batch_size)
+                                              cfg["task"], s, epochs, lr, batch_size,
+                                              bootstrap=bootstrap)
     keys = list(out["seeds"][str(seeds[0])].keys())
     out["mean"] = {k: float(np.nanmean([out["seeds"][str(s)][k] for s in seeds])) for k in keys}
     out["std"] = {k: float(np.nanstd([out["seeds"][str(s)][k] for s in seeds], ddof=1))
@@ -216,6 +229,10 @@ def main():
     ap.add_argument("--epochs", type=int, default=50)
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--batch_size", type=int, default=16)
+    ap.add_argument("--bootstrap", action="store_true",
+                    help="resample the train set with replacement per seed to "
+                         "produce genuine train-sensitivity variance (MolTrain "
+                         "has no seed control; without this per-seed std is a fake 0)")
     ap.add_argument("--out", default=str(REPO / "unimol_finetune_results.json"))
     a = ap.parse_args()
 
@@ -238,7 +255,8 @@ def main():
             print(f"[{name}] split CSV missing ({DATASETS[name]['split_csv']}); skipping")
             continue
         try:
-            results[name] = run(name, DATASETS[name], seeds, a.epochs, a.lr, a.batch_size)
+            results[name] = run(name, DATASETS[name], seeds, a.epochs, a.lr, a.batch_size,
+                                bootstrap=a.bootstrap)
         except Exception as e:
             print(f"[{name}] FAILED: {type(e).__name__}: {e}")
         out_path.write_text(json.dumps(results, indent=2))   # checkpoint per dataset

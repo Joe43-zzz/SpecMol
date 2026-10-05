@@ -245,6 +245,31 @@ def attach_unimol_pair_to_data(data, atoms, pair_payload):
             f"pair_repr_edge shape mismatch: {tuple(data.pair_repr_edge.shape)}"
         )
 
+    # T8: store 3D coords + interatomic distances aligned to pair_edge_index so a
+    # distance-weighted Laplacian (through-space contact edges) can be built
+    # downstream WITHOUT re-running Uni-Mol. atomic_coords come from the same
+    # Uni-Mol conformer; index by the SAME keep_atom_indices used for pair_repr
+    # so they align to the heavy-atom graph nodes 1:1. Guarded so existing
+    # pair_rep.pt without coords still assemble (pair_dist_edge simply absent).
+    coords_key = next((k for k in ("atomic_coords", "coordinates", "coords", "pos")
+                       if k in pair_payload), None)
+    if coords_key is not None:
+        coords = torch.as_tensor(pair_payload[coords_key], dtype=torch.float32)
+        while coords.dim() > 2 and coords.size(0) == 1:
+            coords = coords.squeeze(0)
+        coords = coords.index_select(0, keep_atom_indices).contiguous()  # [num_nodes, 3]
+        if coords.size(0) == num_nodes and coords.size(-1) == 3:
+            src, dst = full_edge_index[0], full_edge_index[1]
+            data.pos = coords
+            data.pair_dist_edge = (coords[src] - coords[dst]).norm(dim=-1).to(torch.float32)
+            if data.pair_dist_edge.shape != (expected_edges,):
+                raise AssertionError(
+                    f"pair_dist_edge shape mismatch: {tuple(data.pair_dist_edge.shape)}"
+                )
+        else:
+            print(f"[T8] WARNING: coords shape {tuple(coords.shape)} != ({num_nodes},3); "
+                  f"skipping pair_dist_edge for this molecule")
+
     return data
 
 
