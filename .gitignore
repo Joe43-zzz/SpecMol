@@ -1,0 +1,22 @@
+# Installers / VPN
+FortiClientInstaller.exe
+VPN/
+
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Model checkpoints
+pkl/
+
+# PyG processed data (large, reproducible)
+SpecMol-Zip/down_task*/processed/
+
+# IDE
+.vscode/
+.idea/

@@ -1,0 +1,366 @@
+% ChebInject (ex-SpecMol) AAAI-2027 — NEW references (verified 2026-06-02).
+% Not yet merged into refs.bib. Add MUST-CITE subset first; others as 7pp budget allows.
+% MUST-CITE: ying2021graphormer luo2023transformerm lu2024unimolplus jiang2021descriptorvsgraph
+%            sun2022gnnpretrain wang2023molgrapheval sypetkowski2024molgps cremer2023egnntox
+%            ramakrishnan2014qm9 liao2023equiformer
+
+% ===== Thread 2: 3D / pair-bias-attention injection =====
+@inproceedings{ying2021graphormer,
+  title     = {Do Transformers Really Perform Bad for Graph Representation?},
+  author    = {Ying, Chengxuan and Cai, Tianle and Luo, Shengjie and Zheng, Shuxin and Ke, Guolin and He, Di and Shen, Yanming and Liu, Tie-Yan},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2021},
+  eprint    = {2106.05234},
+  archivePrefix = {arXiv},
+  note      = {Graphormer: SPD/edge bias added to attention logits; no 3D; from-scratch. T7 mechanistic precursor.}
+}
+
+@inproceedings{luo2023transformerm,
+  title     = {One Transformer Can Understand Both 2D and 3D Molecular Data},
+  author    = {Luo, Shengjie and Chen, Tianlang and Xu, Yixian and Zheng, Shuxin and Liu, Tie-Yan and Wang, Liwei and He, Di},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023},
+  eprint    = {2210.01765},
+  archivePrefix = {arXiv},
+  note      = {Transformer-M: 3D Gaussian-distance attention bias, jointly trained; QM9/PCQM4Mv2/PDBBind only, no ADMET.}
+}
+
+@article{lu2024unimolplus,
+  title   = {Data-driven quantum chemical property prediction leveraging 3D conformations with {Uni-Mol+}},
+  author  = {Lu, Shuqi and Gao, Zhifeng and He, Di and Zhang, Linfeng and Ke, Guolin},
+  journal = {Nature Communications},
+  volume  = {15},
+  pages   = {7104},
+  year    = {2024},
+  doi     = {10.1038/s41467-024-51321-w},
+  note    = {Two-track Transformer, pair->attention bias, end-to-end DFT-refined; PCQM4Mv2+OC20.}
+}
+
+@inproceedings{ji2024unimol2,
+  title     = {{Uni-Mol2}: Exploring Molecular Pretraining Model at Scale},
+  author    = {Ji, Xiaohong and Wang, Zhen and Gao, Zhifeng and Zheng, Hang and Zhang, Linfeng and Ke, Guolin and E, Weinan},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2024},
+  eprint    = {2406.14969},
+  archivePrefix = {arXiv},
+  note      = {1.1B params; AlphaFold-style pair update + SelfAttentionPairBias; QM9/COMPAS-1D only.}
+}
+
+@article{jiao2025ept,
+  title   = {An Equivariant Pretrained Transformer for Unified 3D Molecular Representation Learning},
+  author  = {Jiao, Rui and Kong, Xiangzhe and Zhang, Li and Yu, Ziyang and Ren, Kai and Tan, Cheng and Huang, Wenbing and Liu, Yang},
+  journal = {Nature Communications (preprint)},
+  year    = {2025},
+  eprint  = {2402.12714},
+  archivePrefix = {arXiv},
+  note    = {E(3)-equivariant; distance/edge attention bias, end-to-end; binding + QM9.}
+}
+
+@inproceedings{zhu2022unified2d3d,
+  title     = {Unified 2D and 3D Pre-Training of Molecular Representations},
+  author    = {Zhu, Jinhua and Xia, Yingce and Wu, Lijun and Xie, Shufang and Qin, Tao and Zhou, Wengang and Li, Houqiang and Liu, Tie-Yan},
+  booktitle = {ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD)},
+  year      = {2022},
+  eprint    = {2207.08806},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{godwin2022noisynodes,
+  title     = {Simple {GNN} Regularisation for 3D Molecular Property Prediction and Beyond},
+  author    = {Godwin, Jonathan and Schaarschmidt, Michael and Gaunt, Alexander and Sanchez-Gonzalez, Alvaro and Rubanova, Yulia and Velickovic, Petar and Kirkpatrick, James and Battaglia, Peter},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2022},
+  eprint    = {2106.07971},
+  archivePrefix = {arXiv}
+}
+
+% ===== Thread 1: spectral / polynomial GNNs on molecules =====
+@article{fallani2025qmpretrain,
+  title   = {Pretraining Graph Transformers with Atom-in-a-Molecule Quantum Properties for Improved {ADMET} Modeling},
+  author  = {Fallani, Alessio and Nugmanov, Ramil and Arjona-Medina, Jose and Mervin, Lewis and Engkvist, Ola},
+  journal = {Journal of Cheminformatics},
+  volume  = {17},
+  year    = {2025},
+  doi     = {10.1186/s13321-025-00970-0},
+  note    = {QM pretraining -> more low-frequency Laplacian eigenmodes in attention; backs dual-path spectral story.}
+}
+
+@article{hariri2025stablechebnet,
+  title   = {Return of {ChebNet}: Understanding and Improving an Overlooked {GNN} on Long Range Tasks},
+  author  = {Hariri, Ali and Arroyo, Alvaro and Gravina, Alessio and Eliasof, Moshe and Schonlieb, Carola-Bibiane and Bacciu, Davide and Azizzadenesheli, Kamyar and Dong, Xiaowen and Vandergheynst, Pierre},
+  journal = {arXiv preprint},
+  year    = {2025},
+  eprint  = {2506.07624},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{geisler2024s2gnn,
+  title     = {Spatio-Spectral Graph Neural Networks},
+  author    = {Geisler, Simon and Kosmala, Arthur and Herbst, Daniel and G{\"u}nnemann, Stephan},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2024},
+  eprint    = {2405.19121},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{bo2023specformer,
+  title     = {Specformer: Spectral Graph Neural Networks Meet Transformers},
+  author    = {Bo, Deyu and Shi, Chuan and Wang, Lele and Liao, Renjie},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023},
+  eprint    = {2303.01028},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{hou2025heterophily,
+  title     = {Exploring Heterophily in Graph-level Tasks},
+  author    = {Hou, Qinhan and Zheng, Yilun and Zhang, Xichun},
+  booktitle = {NeurIPS Workshop on New Perspectives in Advancing Graph Machine Learning (NPGML)},
+  year      = {2025},
+  eprint    = {2509.18893},
+  archivePrefix = {arXiv}
+}
+
+@article{jiang2024dgcl,
+  title   = {{DGCL}: Dual-Graph Neural Networks Contrastive Learning for Molecular Property Prediction},
+  author  = {Jiang, Xiuyu and Tan, Liqin and Zou, Qingsong},
+  journal = {Briefings in Bioinformatics},
+  volume  = {25},
+  number  = {6},
+  pages   = {bbae474},
+  year    = {2024},
+  doi     = {10.1093/bib/bbae474}
+}
+
+% ===== Thread 3: simple baselines / fingerprint saturation =====
+@article{jiang2021descriptorvsgraph,
+  title   = {Could graph neural networks learn better molecular representation for drug discovery? A comparison study of descriptor-based and graph-based models},
+  author  = {Jiang, Dejun and Wu, Zhenxing and Hsieh, Chang-Yu and Chen, Guangyong and Liao, Ben and Wang, Zhe and Shen, Chao and Cao, Dongsheng and Wu, Jian and Hou, Tingjun},
+  journal = {Journal of Cheminformatics},
+  volume  = {13},
+  pages   = {12},
+  year    = {2021},
+  doi     = {10.1186/s13321-020-00479-8}
+}
+
+@inproceedings{adamczyk2024moltop,
+  title     = {Molecular Topological Profile ({MOLTOP}): Simple and Strong Baseline for Molecular Graph Classification},
+  author    = {Adamczyk, Jakub and Czech, Wojciech},
+  booktitle = {European Conference on Artificial Intelligence (ECAI)},
+  year      = {2024},
+  doi       = {10.3233/FAIA240663}
+}
+
+@article{adamczyk2025peptidefp,
+  title   = {Molecular Fingerprints Are Strong Models for Peptide Function Prediction},
+  author  = {Adamczyk, Jakub and Ludynia, Piotr and Czech, Wojciech},
+  journal = {arXiv preprint},
+  year    = {2025},
+  eprint  = {2501.17901},
+  archivePrefix = {arXiv}
+}
+
+% ===== Thread 4: evaluation protocol =====
+@inproceedings{wang2023molgrapheval,
+  title     = {Evaluating Self-Supervised Learning for Molecular Graph Embeddings},
+  author    = {Wang, Hanchen and Kaddour, Jean and Liu, Shengchao and Tang, Jian and Lasenby, Joan and Liu, Qi},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS), Datasets and Benchmarks Track},
+  year      = {2023},
+  eprint    = {2206.08005},
+  archivePrefix = {arXiv},
+  note      = {Frozen-vs-finetune rank corr 0.77; KEY P2 precursor (ranking, not absolute-AUC correction).}
+}
+
+@inproceedings{sypetkowski2024molgps,
+  title     = {On the Scalability of {GNN}s for Molecular Graphs},
+  author    = {Sypetkowski, Maciej and Wenkel, Frederik and Poursafaei, Farimah and Dickson, Nia and Suri, Karush and Fradkin, Philip and Beaini, Dominique},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2024},
+  eprint    = {2404.11568},
+  archivePrefix = {arXiv},
+  note      = {Probing >= finetuning for LARGE supervised models -> scope our P2 to small-model/contrastive/linear-probe.}
+}
+
+@inproceedings{sun2022gnnpretrain,
+  title     = {Does {GNN} Pretraining Help Molecular Representation?},
+  author    = {Sun, Ruoxi and Dai, Hanjun and Yu, Adams Wei},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2022},
+  eprint    = {2207.06010},
+  archivePrefix = {arXiv},
+  note      = {SSL gains often n.s.; HPs/splits dominate; only finetunes, never frozen-probe.}
+}
+
+@article{pinto2025intermediate,
+  title   = {Superior Molecular Representations from Intermediate Encoder Layers},
+  author  = {Pinto, Luis},
+  journal = {arXiv preprint},
+  year    = {2025},
+  eprint  = {2506.06443},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{kumar2022lpft,
+  title     = {Fine-Tuning can Distort Pretrained Features and Underperform Out-of-Distribution},
+  author    = {Kumar, Ananya and Raghunathan, Aditi and Jones, Robbie and Ma, Tengyu and Liang, Percy},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2022},
+  eprint    = {2202.10054},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{akhondzadeh2023probing,
+  title     = {Probing Graph Representations},
+  author    = {Akhondzadeh, Mohammad Sadegh and Lingam, Vijay and Bojchevski, Aleksandar},
+  booktitle = {International Conference on Artificial Intelligence and Statistics (AISTATS)},
+  year      = {2023},
+  eprint    = {2303.03951},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{antoniuk2025boom,
+  title     = {{BOOM}: Benchmarking Out-Of-distribution Molecular Property Predictions of Machine Learning Models},
+  author    = {Antoniuk, Evan R. and Zaman, Shehtab and Ben-Nun, Tal},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2025},
+  eprint    = {2505.01912},
+  archivePrefix = {arXiv}
+}
+
+% ===== Thread 5: where 3D helps (boundary) =====
+@article{ramakrishnan2014qm9,
+  title   = {Quantum chemistry structures and properties of 134 kilo molecules},
+  author  = {Ramakrishnan, Raghunathan and Dral, Pavlo O. and Rupp, Matthias and von Lilienfeld, O. Anatole},
+  journal = {Scientific Data},
+  volume  = {1},
+  pages   = {140022},
+  year    = {2014},
+  doi     = {10.1038/sdata.2014.22}
+}
+
+@inproceedings{liao2023equiformer,
+  title     = {Equiformer: Equivariant Graph Attention Transformer for 3D Atomistic Graphs},
+  author    = {Liao, Yi-Lun and Smidt, Tess},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023},
+  eprint    = {2206.11990},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{zaidi2023denoising,
+  title     = {Pre-training via Denoising for Molecular Property Prediction},
+  author    = {Zaidi, Sheheryar and Schaarschmidt, Michael and Martens, James and Kim, Hyunjik and Teh, Yee Whye and Sanchez-Gonzalez, Alvaro and Battaglia, Peter and Pascanu, Razvan and Godwin, Jonathan},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023},
+  eprint    = {2206.00133},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{kim2023geotmi,
+  title     = {{GeoTMI}: Predicting Quantum Chemical Property with Easy-to-Obtain Geometry via Positional Denoising},
+  author    = {Kim, Hyeonsu and Woo, Jeheon and Kim, Seonghwan and Moon, Seokhyun and Kim, Jun Hyeong and Kim, Woo Youn},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2023},
+  eprint    = {2304.03724},
+  archivePrefix = {arXiv}
+}
+
+@article{cremer2023egnntox,
+  title   = {Equivariant Graph Neural Networks for Toxicity Prediction},
+  author  = {Cremer, Julian and Medrano Sandonas, Leonardo and Tkatchenko, Alexandre and Clevert, Djork-Arn{\'e} and De Fabritiis, Gianni},
+  journal = {Chemical Research in Toxicology},
+  year    = {2023},
+  doi     = {10.1021/acs.chemrestox.3c00032},
+  note    = {3D-equivariant ~= 2D on ADMET toxicity -- most direct boundary point.}
+}
+
+@article{axelrod2023conformer,
+  title   = {Molecular machine learning with conformer ensembles},
+  author  = {Axelrod, Simon and Gomez-Bombarelli, Rafael},
+  journal = {Machine Learning: Science and Technology},
+  year    = {2023},
+  doi     = {10.1088/2632-2153/acefa7}
+}
+
+@article{adams2025conformerquality,
+  title   = {The impact of conformer quality on learned representations of molecular conformer ensembles},
+  author  = {Adams, Keir and Coley, Connor W.},
+  journal = {arXiv preprint},
+  year    = {2025},
+  eprint  = {2502.13220},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{lu2025spaceformer,
+  title     = {Beyond Atoms: Enhancing Molecular Pretrained Representations with 3D Space Modeling},
+  author    = {Lu, Shuqi and Ji, Xiaohong and Zhang, Bohang},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {2025},
+  eprint    = {2503.10489},
+  archivePrefix = {arXiv}
+}
+
+% ===== AAAI-fit precedents (prove molecular ML / eval-methodology is in AAAI main-track scope) =====
+@inproceedings{jiao2023energypretrain,
+  title     = {Energy-Motivated Equivariant Pretraining for 3D Molecular Graphs},
+  author    = {Jiao, Rui and Han, Jiaqi and Huang, Wenbing and Rong, Yu and Liu, Yang},
+  booktitle = {AAAI Conference on Artificial Intelligence (AAAI)},
+  year      = {2023},
+  eprint    = {2207.08824},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{li2022geomgcl,
+  title     = {{GeomGCL}: Geometric Graph Contrastive Learning for Molecular Property Prediction},
+  author    = {Li, Shuangli and Zhou, Jingbo and Xu, Tong and Dou, Dejing and Xiong, Hui},
+  booktitle = {AAAI Conference on Artificial Intelligence (AAAI)},
+  year      = {2022},
+  url       = {https://ojs.aaai.org/index.php/AAAI/article/view/20377}
+}
+
+@inproceedings{liu2023molkgnn,
+  title     = {Interpretable Chirality-Aware Graph Neural Network for Quantitative Structure Activity Relationship Modeling in Drug Discovery},
+  author    = {Liu, Yunchao and Wang, Yu and Vu, Oanh and Moretti, Rocco and Bodenheimer, Bobby and Meiler, Jens and Derr, Tyler},
+  booktitle = {AAAI Conference on Artificial Intelligence (AAAI)},
+  year      = {2023},
+  url       = {https://ojs.aaai.org/index.php/AAAI/article/view/26679}
+}
+
+@inproceedings{gode2025aaai,
+  title     = {Bi-level Contrastive Learning for Knowledge-Enhanced Molecule Representations},
+  author    = {{Gode et al. (authors not fully retrieved -- verify before camera-ready)}},
+  booktitle = {AAAI Conference on Artificial Intelligence (AAAI)},
+  year      = {2025},
+  url       = {https://ojs.aaai.org/index.php/AAAI/article/view/32013},
+  note      = {metadata-partial}
+}
+
+@inproceedings{scgib2025aaai,
+  title     = {Pre-Training Graph Neural Networks on Molecules by Using Subgraph-Conditioned Graph Information Bottleneck},
+  author    = {Hoang, Van Thuy and Lee, O-Joun},
+  booktitle = {AAAI Conference on Artificial Intelligence (AAAI)},
+  volume    = {39},
+  number    = {16},
+  pages     = {17204--17213},
+  year      = {2025},
+  url       = {https://ojs.aaai.org/index.php/AAAI/article/view/33891},
+  note      = {arXiv:2412.15589. Scoop-check 2026-06-02: NOT a C1 scoop -- 2D-graph SSL via subgraph-conditioned info bottleneck; no 3D/geometry, no Chebyshev/spectral backbone, no NT-Xent contrastive, no random-pair null / matched-split / frozen-vs-finetune audit. Orthogonal to our random-pair-null + frozen-3D-pair-into-spectral-GNN audit.}
+}
+
+@inproceedings{assocpattern2025aaai,
+  title     = {Association Pattern-enhanced Molecular Representation Learning},
+  author    = {{authors not fully retrieved -- verify before camera-ready}},
+  booktitle = {AAAI Conference on Artificial Intelligence (AAAI)},
+  year      = {2025},
+  url       = {https://ojs.aaai.org/index.php/AAAI/article/view/33935},
+  note      = {metadata-partial}
+}
+
+@inproceedings{forestvstree2026aaai,
+  title     = {Forest vs Tree: The (N, K) Trade-off in Reproducible ML Evaluation},
+  author    = {{authors not fully retrieved -- verify before camera-ready}},
+  booktitle = {AAAI Conference on Artificial Intelligence (AAAI)},
+  year      = {2026},
+  url       = {https://ojs.aaai.org/index.php/AAAI/article/view/39659},
+  note      = {metadata-partial; eval-methodology precedent for P2/P3 framing}
+}

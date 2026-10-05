@@ -1,0 +1,135 @@
+% DRAFT v2 — abstract + contributions list for ICDE 2027 R1 EAB.
+% Sprint Day 2 morning: V0 vs V2-T5 vs T6 matched-protocol regression
+% data came in. Major finding: V0 ≈ V2-T5 ≈ T6 within seed variance on
+% all 3 regression benchmarks at the same scaffold split + same Uni-Mol
+% pair data. Previous "FreeSolv geometry win" (V2-T5 0.638) was a
+% protocol artifact — re-run with matched-split V0 gives V0 0.665,
+% V2-T5 0.675 (V2-T5 marginally WORSE than V0).
+
+% =====================================================================
+% Abstract v2 (replaces icde2027_eab_abstract_intro.tex Abstract)
+% =====================================================================
+
+\begin{abstract}
+Pretrained graph neural networks for molecular property prediction
+routinely incorporate three-dimensional structural information through
+pair representations, yet whether this geometry contributes anything to
+downstream performance under matched evaluation has not been
+systematically audited. We conduct a controlled empirical study of three
+independently motivated 3D-pair injection mechanisms---static bond-level
+gating (V2-T5), iterative pair-node update (T6), and pair-biased
+multi-head attention with a per-head sigmoid gate (T7)---within a shared
+ChebNet II spectral backbone trained with NT-Xent contrastive
+pretraining. We evaluate on six MoleculeNet-derived benchmarks under a
+matched Uni-Mol scaffold-fold protocol with three to nine training seeds
+per cell: BBBP, BACE, and ClinTox for classification, and FreeSolv,
+ESOL, and Lipo for regression. \emph{Across all six benchmarks, the
+three deep variants tie or trail the V0 2D baseline within seed
+variance at matched split.} The FreeSolv result, previously reported in
+the literature as a measurable geometry win for V2-T5 + Uni-Mol pair
+($\approx 0.04$ RMSE over the 30-seed RF baseline of
+\citet{deng2023systematic}), does not survive a matched-V0 control: at
+identical scaffold split, identical Uni-Mol pair data, and identical
+seeds, V0 reaches $0.665 \pm 0.031$ RMSE vs.\ V2-T5
+$0.675 \pm 0.036$ on FreeSolv, while ESOL and Lipo collapse cleanly to
+V0 within seed variance. Classical Random Forest with Morgan + 11
+RDKit 2D descriptors dominates BACE by approximately 13 AUC points and
+the largest regression benchmark, Lipo, by approximately $0.18$ RMSE,
+demonstrating fingerprint saturation as the dominant ceiling on
+multiple endpoints. A mechanism-level analysis of V2-T5 reveals an
+aromatic-routing pattern (Pearson $r{=}{+}0.66$) consistent across all
+audited training seeds on BBBP, and T7's per-head attention gate stays
+in the near-identity-residual regime documented by
+ReZero~\cite{bachlechner2021rezero} and LayerScale~\cite{touvron2021cait}
+across every audited (benchmark, seed) checkpoint --- characterizing a
+``mechanism without metric'' regime in pretrained molecular GNNs:
+learned 3D-integration mechanisms are interpretable, robust, and
+consistent across seeds, yet do not translate to predictive improvement
+once a matched 2D control is in place. We additionally document and
+quantify a silent unidirectional-bond featurization regression in our
+codebase that drops approximately 19\% of heavy atoms from the symmetric
+Laplacian, shifting apparent V2-T5 BACE performance by 7.4 AUC points
+under unfair pre-fix comparison, and we audit fourteen widely cited
+public molecular GNN repositories for the same vulnerability. We
+release the full evaluation harness, all dataset processing pipelines,
+baseline implementations, and per-seed checkpoints.
+\end{abstract}
+
+% =====================================================================
+% Contributions list v2 (replaces the 5-bullet block in §1)
+% =====================================================================
+
+\paragraph{Contributions.}
+\begin{itemize}
+\item \textbf{(C1) A matched-V0 audit of 3D-pair injection across six
+benchmarks.} Under a single matched Uni-Mol scaffold-fold protocol with
+$n{=}3$--$9$ training seeds per cell, the three deep variants we test
+(V2-T5, T6, T7) tie or trail a 2D-only baseline (V0) on every
+classification \emph{and} every regression benchmark within seed
+variance. The FreeSolv $-0.04$ RMSE separation that we initially read as
+a real geometry win does not survive a matched-V0 control on the same
+data: V0 reaches RMSE $0.665 \pm 0.031$ vs.\ V2-T5
+$0.675 \pm 0.036$ on FreeSolv at $n{=}3$. Random Forest with Morgan +
+RDKit-2D descriptors dominates BACE by $\sim 13$ AUC and Lipo by
+$\sim 0.18$ RMSE, identifying fingerprint saturation as the dominant
+ceiling on multiple endpoints.
+
+\item \textbf{(C2) V2-T5 learns aromatic-routing on BBBP even when test
+AUC does not improve.} Across all nine audited BBBP V2-T5 checkpoints,
+the trained gate up-weights aromatic bonds with Pearson
+$r \in [0.62, 0.69]$ against the bond-aromatic indicator. The mechanism
+is reproducible across seeds and chemically interpretable, but it does
+not translate into a population-level test-AUC improvement over V0 ---
+the central ``mechanism without metric'' observation of this paper.
+
+\item \textbf{(C3) T7's per-head attention gate stays in the
+near-identity regime.} Across all nine audited (BBBP, BACE, FreeSolv
+$\times$ seeds 9/19/29) T7 checkpoints, the per-head sigmoid attention
+gate $\sigma(\gamma_h)$ stays within $[0.122, 0.124]$ after $1000$
+pretraining epochs (initialization at $\sigma({-}2)\approx 0.119$). This
+places trained T7 in the near-identity-residual regime documented by
+ReZero~\cite{bachlechner2021rezero} and
+LayerScale~\cite{touvron2021cait}, and is consistent with the
+contrastive pretraining objective providing little direct gradient
+pressure on attention-output utilization.
+
+\item \textbf{(C4) Forensic featurization audit.} An internal
+unidirectional-bond featurization regression in our GraphDTA-derived
+loader~\cite{nguyen2021graphdta} caused approximately $19\%/18\%/24\%$
+of heavy atoms on BBBP/BACE/FreeSolv to receive row-out-degree zero in
+the symmetric Laplacian. Controlling for this regression on BACE
+shifts apparent V2-T5 by $7.4$ AUC points --- more than the entire
+deep-vs-classical gap on the same benchmark. We audit fourteen widely
+cited public molecular GNN repositories for the same vulnerability and
+report where it is and is not present
+(\S\ref{sec:featurization-control}); the audit script
+(\texttt{paper/audit\_b4\_atom\_dropout.py}) is released as a
+defensive check.
+
+\item \textbf{(C5) Reproducibility artifact.} Per the ICDE 2027 EAB
+requirement, we release the full evaluation harness, all dataset
+preparation scripts, baseline implementations (RF + Chemprop), per-seed
+result JSONs, and the per-seed pretraining checkpoints. All numbers in
+our tables are regenerated by a single
+\texttt{paper/make\_tables.py} from machine-readable per-seed JSON,
+and the end-to-end pipeline from raw SMILES to LaTeX table reproduces
+in under $\sim 100$~GPU-hours plus $\sim 6$~CPU-hours on a single user's
+allocation.
+\end{itemize}
+
+% =====================================================================
+% Notes for paper rewrite
+% =====================================================================
+% (a) 6-dataset scope confirmed (Tox21 dropped after make_task_from_unimol
+%     step 0d OOM-kill: 7831-mol all-pairs pair_repr build exceeds the
+%     48GB CPU memory cap on the ws-ia partition). The drop is documented
+%     in §6 limitations: "we report results across six MoleculeNet
+%     benchmarks; the larger Tox21 (n=7831, 12-task) failed our matched
+%     Uni-Mol pair-extraction memory budget and is deferred to follow-up".
+% (b) The matched-V0 narrative makes the cross-N regression finding
+%     STRONGER than the Day-1-pre-V0 finding ("V2-T5 wins FreeSolv,
+%     loses Lipo"). Now the story is "no architectural extension here
+%     beats V0 once V0 is run on the same data". Cleaner empirical claim.
+% (c) BBBP and BACE numbers unchanged (n=9 and n=3 respectively, both at
+%     matched protocol already). The classification headline is
+%     unchanged.

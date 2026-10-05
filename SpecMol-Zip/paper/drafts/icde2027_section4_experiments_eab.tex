@@ -1,0 +1,198 @@
+% DRAFT §4 Experiments for ICDE 2027 R1 EAB submission.
+% Replaces current main.tex §4 (lines ~113-152). Restructured for
+% 7-dataset matrix + EAB-style "audit + diagnostic" narrative.
+
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Setup}
+\paragraph{Benchmarks.} BBBP ($n{=}2{,}039$), BACE ($n{=}1{,}513$),
+ClinTox ($n{=}1{,}480$, two tasks: FDA approval and clinical-trial
+toxicity), and Tox21 ($n{=}7{,}831$, twelve toxicity-pathway tasks) for
+classification; FreeSolv ($n{=}642$), ESOL ($n{=}1{,}128$), and Lipo
+($n{=}4{,}200$) for regression. Classification benchmarks use the Uni-Mol
+scaffold-fold protocol; regression benchmarks use a matched
+\texttt{DeepChem}-\texttt{ScaffoldSplitter} (seed $42$) at $80/10/10$.
+
+\paragraph{Seeds and budget.} Three training seeds $\{9,19,29\}$ for the
+core contrastive pretraining stage on every (variant, benchmark) cell.
+BBBP V0/V2-T5/T6 additionally extend to nine training seeds
+$\{9,19,29,39,49,59,69,79,89\}$ to anchor the seed-variance discussion.
+Each pretrained checkpoint runs three downstream evaluation restarts with
+probe-init seeds $\{9,19,29\}$; classification cells collapse the
+restarts to a per-training-seed mean before computing the table std.
+Pretraining: up to $1000$ epochs, batch size $512$, NT-Xent
+$\tau{=}0.5$, training-loss early stopping with patience $100$. Downstream
+linear probe: $500$ epochs for classification, $2000$ for regression,
+validation-best selection with a $200$-epoch warm-up and strict
+improvement tolerance $10^{-4}$.
+
+\paragraph{Baselines.} V0 (2D-only, no $\mathbf{P}$). Fingerprint-only
+($\mathrm{FP}$ MLP, no graph encoder; classification only). Random Forest
+with Morgan + 11 RDKit 2D descriptors evaluated under the 30-seed
+protocol of~\cite{deng2023systematic}. Chemprop
+D-MPNN~\cite{yang2019chemprop} at default hyperparameters.
+
+\paragraph{Compute.} NVIDIA RTX 5000 Ada (32 GB) per pretraining run,
+$\sim 4$ wall-clock hours per (variant, benchmark, seed) cell;
+fingerprint MLP fusion and the linear probe run on the same node in
+$\sim 1$ hour. Random Forest and Chemprop baselines run on CPU
+(eight cores, two-hour wall-clock per benchmark for the 30-seed protocol).
+The full sprint matrix (seven benchmarks $\times$ four deep variants
+$\times$ three seeds plus baselines) consumes approximately
+$336$~GPU-hours plus $14$~CPU-hours, executable in $\sim 14$ days on a
+single user's GPU allocation. We release the orchestration
+(\texttt{hpc/run\_dataset\_pipeline.sh},
+\texttt{hpc/run\_regression\_v2t5.sbatch}) as the reproducibility
+artifact (\S\ref{sec:reproducibility}).
+
+\subsection{Main Results: 7-Benchmark Matrix}
+\label{sec:main-results}
+\input{tables/classification.tex}
+\input{tables/regression.tex}
+Tables~\ref{tab:classification} and~\ref{tab:regression} summarize
+performance. Three findings dominate.
+
+\paragraph{(F1) All three deep variants tie or trail V0 on
+classification.} On BBBP at $n{=}9$, V0, V2-T5, and T6 sit in the same
+seed-variance band ($0.828 \pm 0.027$, $0.831 \pm 0.032$, and
+$0.831 \pm 0.022$ respectively); the $n{=}3$ T7 cell lands at
+$0.821 \pm 0.011$, marginally below the others but within noise. On BACE,
+V2-T5 ($0.763 \pm 0.010$) and T6 ($0.768 \pm 0.088$) trail V0
+($0.757 \pm 0.047$) within a fraction of a sigma; T7 reaches
+$0.780 \pm 0.027$. On ClinTox and Tox21 the deep variants likewise tie
+within seed variance (numbers in Table~\ref{tab:classification}). None of
+the four classification cells produces a statistically reliable
+improvement over the 2D baseline.
+
+\paragraph{(F2) FreeSolv regression with Uni-Mol pair representations is
+the strongest matched-protocol effect.} V2-T5 + Uni-Mol pair reaches
+RMSE $0.638 \pm 0.017$ on FreeSolv against Chemprop's default-
+hyperparameter $0.879 \pm 0.085$ and the random-forest control of
+$0.675 \pm 0.010$. On ESOL and Lipo the V2-T5 numbers
+(Table~\ref{tab:regression}) are likewise reported; whether the FreeSolv
+margin generalizes to the larger ESOL ($n{=}1{,}128$) and Lipo
+($n{=}4{,}200$) sets is a primary empirical question of this study
+\textbf{[NB: this paragraph completes with ESOL/Lipo numbers once HPC
+returns; placeholders elsewhere in this draft are flagged
+\PLACEHOLDER]}.
+
+\paragraph{(F3) Classical Random Forest dominates BACE.} Morgan + RDKit
+2D under the 30-seed protocol of~\cite{deng2023systematic} reaches
+$0.894 \pm 0.003$ on BACE, exceeding every deep variant by approximately
+13 AUC points. The fingerprint-only control reaches $0.846 \pm 0.012$
+(pre-B4 archive). We read this as fingerprint saturation on the
+predominantly hydrophobic, descriptor-encoded BACE binding pocket, and we
+report Chemprop and Random Forest alongside every deep variant
+specifically so that this saturation cannot be obscured.
+
+\subsection{Featurization Control: Pre- vs.\ Post-B4 BACE}
+\label{sec:b4-control}
+\input{tables/b4_pre_post.tex}
+Table~\ref{tab:b4} reports a controlled ablation of the bidirectional
+bond fix described in \S\ref{sec:featurization-control}. Re-running V0
+and V2-T5 with the pre-B4 unidirectional edge list shifts V0 by
+$+0.040$ AUC ($0.797 \to 0.757$, fix reduces V0) and V2-T5 by $+0.074$
+AUC ($0.837 \to 0.763$). \emph{A featurization defect that drops
+$\sim 18\%$ of heavy atoms from the symmetric Laplacian therefore shifts
+apparent V2-T5 BACE performance by more than the entire deep-vs-classical
+gap on the same benchmark.} The pre-B4 V0-V2T5 margin of $+0.04$ AUC
+(the original headline claim) collapses to $+0.005$ post-B4
+($0.763 - 0.757$), within seed variance. This is the headline
+methodological flag of the paper.
+
+The cross-repository audit (Table~\ref{tab:repo_audit}) shows that the
+specific bug class is locally confined to our codebase rather than
+widespread in the literature: every one of fourteen audited repositories
+either explicitly double-appends edges or applies a
+\texttt{networkx.Graph(\ldots).to\_directed()} call downstream. We
+nonetheless report the controlled ablation, both because it is concrete
+evidence that the bug class is potent when it does slip through and
+because the audit script (\texttt{paper/audit\_b4\_atom\_dropout.py}) is
+released as a defensive check that practitioners can run against their
+own pipelines.
+
+\subsection{Mechanism Analyses}
+\label{sec:mechanism}
+
+\paragraph{V2-T5 learns aromatic-routing on BBBP.}
+\label{sec:aromatic-routing}
+We dump the per-bond gate $g_{ij}$ for every chemical-bond edge in one
+inference pass over the pretrain split and correlate it with the
+bond-feature dominant column ($\in$ \{Single, Double, Triple, Aromatic\}).
+On the three audited BBBP V2-T5 checkpoints, $g_{ij}$ up-weights aromatic
+bonds and down-weights saturated single bonds with Pearson against
+Aromatic indicator of $\{+0.690, +0.664, +0.618\}$ and mirror
+anti-correlation $\{-0.49, -0.45, -0.39\}$ on Single bonds. The mechanism
+is consistent in direction across all three seeds; the seed-19 outlier
+whose gate distribution does not sparsify
+(mean $\sigma {\approx} 0.29$, the only BBBP seed where V2-T5 loses V0)
+shows the same routing direction at uniformly higher magnitude, so basin
+heterogeneity is in scale rather than direction. The mechanism is
+robust within the three audited seeds; we did not extend the bond-level
+attribution to the six additional BBBP $n{=}9$ seeds, so the claim is
+scoped to the audited cohort.
+
+\paragraph{The mechanism does not transfer to BACE.} The same V2-T5
+architecture trained on BACE produces $g_{ij}$ correlated with bond type
+in $[+0.06, +0.18]$ at $b{=}{+}5$, well below the BBBP magnitudes.
+Aromatic-vs-non-aromatic mean-gate deltas are within noise on BACE. This
+asymmetry is consistent with the BACE fingerprint-saturation reading of
+\S\ref{sec:main-results}~(F3): when classical descriptors already
+saturate the benchmark, the gate has no graph-side incentive to organize
+around bond chemistry.
+
+\paragraph{T7's per-head attention gate stays near initialization.}
+\label{sec:t7-closed-gate}
+Across all nine audited (BBBP, BACE, FreeSolv $\times$ seeds 9/19/29)
+T7 checkpoints, the per-head sigmoid attention gate
+$\sigma(\gamma_h)$ stays within $[0.122, 0.124]$ after $1000$ pretraining
+epochs, having started at $\sigma(-2) \approx 0.119$. This places the
+trained T7 in the near-identity-residual regime documented by ReZero
+\cite{bachlechner2021rezero} and LayerScale \cite{touvron2021cait}, and
+is consistent with the contrastive pretraining objective providing little
+direct gradient pressure on attention-output utilization. We report T7
+as a controlled exploration of attention-based pair injection rather
+than as a contribution; the closed-gate observation itself contributes to
+the methodological discussion in \S\ref{sec:discussion}.
+
+\subsection{Random-Pair Ablation}
+\label{sec:random-pair}
+To verify that V2-T5's marginal effects above seed noise come from
+geometric structure rather than from raw MLP capacity, we replace
+$\mathbf{P}$ with an isotropic Gaussian tensor of identical shape (gate,
+bias, and MLP unchanged) and re-run BBBP on the original three matched
+seeds. The random-pair variant reaches $0.830 \pm 0.017$ overall and
+loses to V2-T5 on all three seeds (deltas $+0.014, +0.024, +0.059$;
+mean $+0.032$; $3/3$ wins, one-sided binomial $p{=}0.125$). The Uni-Mol
+pair therefore carries a small per-seed signal that an isotropic random
+tensor does not, but this signal sits below the seed-to-seed test-AUC
+noise floor and---per the $n{=}9$ extension---neither variant moves above
+the V0 envelope; on BBBP, V2-T5 functions primarily as a structured MLP
+gate with a measurable but sub-noise-floor geometry contribution.
+
+\subsection{Bias Initialization Sweep}
+\label{sec:bias-sweep}
+The bias term $b$ in Eq.~(\ref{eq:v2t5gate}) determines the initial gate
+value. At $b{=}{+}5$ ($\sigma(5)\approx 0.993$), the epoch-zero filter
+sits at near-identity. A matched-seed sweep at $b{=}{+}1$
+($\sigma(1)\approx 0.731$) on BACE produces $0.759 \pm 0.019$, tied with
+$b{=}{+}5$ ($0.763 \pm 0.010$, fingerprint-saturated). On the original
+three BBBP seeds, $b{=}{+}1$ drops test AUC by $3.3$ points ($0.829 \pm
+0.015$) and the gate fails to enter the aromatic-routing basin. Bias
+initialization therefore matters within the audited cohort. A post-hoc
+audit of the three BACE V2-T5 checkpoints reveals that $b$ moves only a
+small amount during training (final $b\approx 4.77 \pm 0.01$) but the
+$\mathrm{MLP}_\phi$ weights learn a mean pre-sigmoid shift of
+$-2.62 \pm 0.34$, so the trained gates concentrate at
+$\sigma\approx 0.07$; the near-identity initialization is what we
+\emph{initialize at}, not what we \emph{end at}. Figure~\ref{fig:gate}
+plots the trained gate distributions; even the per-seed 99\textsuperscript{th}
+percentile gate stays under $0.20$.
+
+% PLACEHOLDERS:
+%   \input{tables/classification.tex}  -- regenerated by paper/make_tables.py
+%   \input{tables/regression.tex}      -- regenerated by paper/make_tables.py
+%   \input{tables/b4_pre_post.tex}     -- TODO: small 3-row table comparing pre-/post-B4 V0, FP-only, V2-T5 on BACE
+%   Figure~\ref{fig:gate}              -- existing figures/gate_distribution_bace_v2t5.pdf
+%   ESOL/Lipo numbers in F2 paragraph  -- filled when HPC returns

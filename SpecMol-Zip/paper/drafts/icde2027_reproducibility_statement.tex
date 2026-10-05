@@ -1,0 +1,85 @@
+% DRAFT EAB Reproducibility Statement for ICDE 2027 R1.
+% Insert into main.tex either as a new §6.1 subsection or as the
+% Reproducibility paragraph immediately after the Conclusion.
+% ICDE 2027 EAB CFP: "all artifacts for reproducibility -- no exceptions
+% in this paper category."
+
+\section*{Reproducibility Artifact}
+\label{sec:reproducibility}
+\addcontentsline{toc}{section}{Reproducibility Artifact}
+
+We release a self-contained reproducibility bundle covering all numbers,
+figures, and the cross-repository audit reported in this paper. The
+bundle is organized to let a reviewer regenerate any individual table
+cell or figure from raw SMILES in under one GPU-day per (variant,
+benchmark, seed) cell.
+
+\paragraph{Data pipelines.} For every benchmark in
+Tables~\ref{tab:classification} and~\ref{tab:regression}
+(\datasetlist) we ship the SMILES-to-\texttt{.pt} build pipeline. For
+classification benchmarks: \texttt{prepare\_molnet\_dataset.py},
+\texttt{export\_unimol\_task.py}, and \texttt{make\_task\_from\_unimol.py}.
+For regression benchmarks: \texttt{prepare\_regression\_unimol\_input.py}
+and \texttt{make\_regression\_unimol\_data.py}, both task-parameterized
+over $\{\text{esol}, \text{lipo}, \text{freesolv}\}$. The scaffold-fold
+split protocol is deterministic with a documented seed
+($\mathrm{seed}{=}42$ across all builders).
+
+\paragraph{Model and training code.} The
+\texttt{LH\_Direct\_V2} encoder
+(\texttt{model\_gnn\_pre\_v2.py}) and the three pair-injection mechanisms
+(\S\ref{sec:subjects}) are implemented in a single file with the
+ablation switches that toggle V2-T5/T6/T7 exposed as command-line flags
+(\texttt{--use\_v2}, \texttt{--use\_t6}, \texttt{--t7}). Pretraining
+entry is \texttt{main\_pretrain.py} (classification) and
+\texttt{run\_regression\_v2t5.py} (regression). The HPC orchestration
+layer (\texttt{hpc/run\_dataset\_pipeline.sh} and the per-task
+\texttt{*.sbatch} templates) is shipped as-is and runs on a stock SLURM
+cluster with no SpecMol-specific configuration beyond two environment
+variables (\texttt{UNIMOL\_CKPT}, \texttt{UNIMOL\_DICT}).
+
+\paragraph{Classical and supervised-graph baselines.}
+\texttt{baselines\_ml.py} runs the 300-tree random forest on Morgan +
+RDKit 2D descriptors under the 30-seed protocol of
+\citet{deng2023systematic}; \texttt{baselines\_chemprop.py} runs Chemprop
+D-MPNN~\cite{yang2019chemprop} on the same Uni-Mol scaffold-fold split as
+every deep variant. Both produce machine-readable JSON output that the
+\texttt{paper/make\_tables.py} aggregator reads to generate the table
+cells.
+
+\paragraph{B4 featurization audit.}
+\texttt{paper/audit\_b4\_atom\_dropout.py} is the audit script behind the
+$19\%$/$18\%$/$24\%$ heavy-atom dropout statistics in
+\S\ref{sec:featurization-control}. The cross-repository audit
+(\S\ref{sec:experiments}, fourteen-repo table) is provided as a
+JSON-backed bibliography
+(\texttt{paper/audits/cross\_repo\_b4\_audit.json}) with verbatim quotes
+from the offending lines, file paths, and commit SHAs of every repository
+inspected so reviewers can re-verify.
+
+\paragraph{Per-seed checkpoints and result JSONs.}
+Every reported (variant, seed) cell ships with a per-seed result JSON
+under \texttt{hpc/results/} that contains the pretraining loss
+trajectory, the best probe epoch, and the test metric. The
+end-to-end-aggregated JSONs at the repository root
+(\texttt{bbbp\_all\_results.json}, \texttt{bace\_all\_results.json},
+\texttt{clintox\_all\_results.json}, \texttt{tox21\_all\_results.json},
+\texttt{freesolv\_v2t5\_results.json},
+\texttt{esol\_v2t5\_results.json}, \texttt{lipo\_v2t5\_results.json},
+\texttt{baselines\_chemprop\_results\_unimol\_fold.json},
+\texttt{baselines\_ml\_results\_deng30\_unimol\_fold.json}) are the sole
+upstream sources for every number in this paper. A single command
+(\texttt{python paper/make\_tables.py}) regenerates all tables from these
+JSONs.
+
+\paragraph{Compute and wall-clock.} Pretraining for one (variant, seed)
+pair takes approximately 4 hours on an NVIDIA RTX 5000 Ada (32~GB);
+the linear probe and evaluation restart loop takes under one hour.
+End-to-end, regenerating Tables~\ref{tab:classification}
+and~\ref{tab:regression} from raw SMILES requires roughly
+$7~\text{datasets} \times 4~\text{variants} \times 3~\text{seeds} \times
+4~\text{hours} \approx 336~\text{GPU-hours}$ for the deep variants, plus
+$2~\text{hours}$ each for the Chemprop and Random Forest baseline sweeps,
+which run on CPU. We acknowledge that this is non-trivial; reviewers who
+prefer to spot-check a single cell (e.g.\ BBBP V2-T5 seed 9) can do so in
+$\sim 4.5$ hours of GPU time.

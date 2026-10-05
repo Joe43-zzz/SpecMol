@@ -1,0 +1,141 @@
+% ChebInject AAAI-2027 — ROUND 2 (completeness sweep, verified 2026-06-02).
+% Closes related-work gaps. MUST-CITE block first, NICE-TO-HAVE block after.
+
+% ===== MUST-CITE =====
+@inproceedings{schutt2021painn,
+  title={Equivariant message passing for the prediction of tensorial properties and molecular spectra},
+  author={Sch{\"u}tt, Kristof T. and Unke, Oliver T. and Gastegger, Michael},
+  booktitle={International Conference on Machine Learning (ICML)}, year={2021},
+  note={PaiNN: equivariant (vector) message passing; SOTA QM9; direct precursor of Uni-Mol's SE(3) encoder.}}
+
+@inproceedings{fuchs2020se3transformer,
+  title={{SE(3)}-Transformers: 3D Roto-Translation Equivariant Attention Networks},
+  author={Fuchs, Fabian B. and Worrall, Daniel E. and Fischer, Volker and Welling, Max},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)}, year={2020},
+  note={Canonical equivariant-attention ancestor; cite alongside T7 pair-bias attention.}}
+
+@article{ross2022molformer,
+  title={Large-Scale Chemical Language Representations Capture Molecular Structure and Properties},
+  author={Ross, Jerret and Belgodere, Brian and Chenthamarakshan, Vijil and Padhi, Inkit and Mroueh, Youssef and Das, Payel},
+  journal={Nature Machine Intelligence}, year={2022},
+  note={MolFormer: linear-attention SMILES transformer on 1.1B molecules; BBBP 0.937, BACE 0.882 (no 3D). Strongest SMILES-only baseline on our benchmarks.}}
+
+@inproceedings{you2020graphcl,
+  title={Graph Contrastive Learning with Augmentations},
+  author={You, Yuning and Chen, Tianlong and Sui, Yongduo and Chen, Ting and Wang, Zhangyang and Shen, Yang},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)}, year={2020},
+  note={GraphCL: augmentation-contrastive GNN pretraining (NT-Xent). Canonical contrast for our augmentation-free 4-view objective.}}
+
+@article{maziarka2020mat,
+  title={Molecule Attention Transformer},
+  author={Maziarka, {\L}ukasz and Danel, Tomasz and Mucha, S{\l}awomir and Rataj, Krzysztof and Tabor, Jacek and Jastrz{\k{e}}bski, Stanis{\l}aw},
+  journal={arXiv:2002.08264 (NeurIPS 2019 workshops)}, year={2020},
+  note={MAT: additive inter-atomic distance + adjacency bias in self-attention. Direct conceptual ancestor of T7; must-cite or reviewer flags.}}
+
+@inproceedings{hussain2022egt,
+  title={Edge-augmented Graph Transformers: Global Self-attention is Enough for Graphs},
+  author={Hussain, Md Shamim and Zaki, Mohammed J. and Subramanian, Dharmashankar},
+  booktitle={ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD)}, year={2022},
+  note={EGT: dedicated all-pairs N x N edge channels updated through MHA; SOTA PCQM4Mv2. Same all-pairs pair object T7 injects.}}
+
+@inproceedings{bo2021fagcn,
+  title={Beyond Low-frequency Information in Graph Convolutional Networks},
+  author={Bo, Deyu and Wang, Xiao and Shi, Chuan and Shen, Huawei},
+  booktitle={AAAI Conference on Artificial Intelligence (AAAI)}, year={2021},
+  note={FAGCN: self-gated mixing of low-pass (smoothing) and high-pass (sharpening) per edge. Directly motivates the dual low/high-pass design. (AAAI precedent.)}}
+
+@inproceedings{wang2022jacobiconv,
+  title={How Powerful are Spectral Graph Neural Networks},
+  author={Wang, Xiyuan and Zhang, Muhan},
+  booktitle={International Conference on Machine Learning (ICML)}, year={2022},
+  note={Proves universality conditions for linear spectral GNNs; JacobiConv. Theoretical upper bound on what ChebNetII-style polynomial filters express.}}
+
+@inproceedings{hu2020ogb,
+  title={Open Graph Benchmark: Datasets for Machine Learning on Graphs},
+  author={Hu, Weihua and Fey, Matthias and Zitnik, Marinka and Dong, Yuxiao and Ren, Hongyu and Liu, Bowen and Catasta, Michele and Leskovec, Jure},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)}, year={2020},
+  note={OGB: unified scaffold-split molecular benchmarks; the post-2020 OOD-eval default and ancestor of the Uni-Mol fold split.}}
+
+@article{rogers2010ecfp,
+  title={Extended-Connectivity Fingerprints},
+  author={Rogers, David and Hahn, Mathew},
+  journal={Journal of Chemical Information and Modeling}, volume={50}, number={5}, pages={742--754}, year={2010},
+  doi={10.1021/ci100050t},
+  note={Defines ECFP / Morgan fingerprints. Foundational; currently uncited despite C2 invoking Morgan throughout.}}
+
+@article{kamuntavicius2025admet,
+  title={Benchmarking machine learning in {ADMET} predictions: the practical impact of feature representations in ligand-based models},
+  author={Kamuntavi{\v{c}}ius, Gintautas and Paquet, Tanya and Bastas, Orestis and others},
+  journal={Journal of Cheminformatics}, volume={17}, pages={108}, year={2025},
+  doi={10.1186/s13321-025-01041-0},
+  note={RDKit descriptors + classical fingerprints outperform DL embeddings across ADMET; independent replication of C2 with statistics.}}
+
+@inproceedings{wang2023threedpgt,
+  title={Automated 3D Pre-Training for Molecular Property Prediction},
+  author={Wang, Xu and Zhao, Huan and Tu, Wei-wei and Yao, Quanming},
+  booktitle={ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD)}, year={2023},
+  note={3D-PGT: multi-task 3D-geometry generative pretraining, then 2D-only inference. Direct parallel to the frozen-injection idea (geometry without 3D at test time).}}
+
+@inproceedings{liu2023moleculesde,
+  title={A Group Symmetric Stochastic Differential Equation Model for Molecule Multi-modal Pretraining},
+  author={Liu, Shengchao and Du, Weitao and Ma, Zhi-Ming and Guo, Hongyu and Tang, Jian},
+  booktitle={International Conference on Machine Learning (ICML)}, year={2023},
+  note={MoleculeSDE: bidirectional 2D<->3D generative + contrastive pretraining; SOTA 26/32 tasks. 2D-3D multiview competitor.}}
+
+@article{qiao2025scage,
+  title={A Self-Conformation-Aware Pre-training Framework for Molecular Property Prediction with Substructure Interpretability},
+  author={Qiao, Jianbo and Jin, Junru and Wang, Di and others},
+  journal={Nature Communications}, volume={16}, pages={4382}, year={2025},
+  note={SCAGE: 3D-distance attention bias at PRETRAIN, 2D-only inference; BACE 0.854/BBBP 0.734. CLOSEST competitor to T7+frozen-injection; independently confirms 3D-into-2D inert vs fingerprints on ADMET.}}
+
+% ===== NICE-TO-HAVE =====
+@article{wang2024visnet,
+  title={Enhancing geometric representations for molecules with equivariant vector-scalar interactive message passing},
+  author={Wang, Yusong and Wang, Tong and Li, Shaoning and others},
+  journal={Nature Communications}, volume={15}, pages={313}, year={2024},
+  note={ViSNet; recent high-water-mark 3D model winning QM9/MD/PCQM4Mv2 -- positive-geometry contrast.}}
+
+@inproceedings{liu2022spherenet,
+  title={Spherical Message Passing for 3D Molecular Graphs},
+  author={Liu, Yi and Wang, Limei and Liu, Meng and Zhang, Xuan and Oztekin, Bora and Ji, Shuiwang},
+  booktitle={International Conference on Learning Representations (ICLR)}, year={2022}}
+
+@article{ahmad2022chemberta2,
+  title={{ChemBERTa-2}: Towards Chemical Foundation Models},
+  author={Ahmad, Walid and Simon, Elana and Chithrananda, Seyone and Grand, Gabriel and Ramsundar, Bharath},
+  journal={arXiv:2209.01712 (NeurIPS 2022 ELLIS workshop)}, year={2022}}
+
+@inproceedings{rampasek2022gps,
+  title={Recipe for a General, Powerful, Scalable Graph Transformer},
+  author={Ramp{\'a}{\v{s}}ek, Ladislav and Galkin, Mikhail and Dwivedi, Vijay Prakash and Luu, Anh Tuan and Wolf, Guy and Beaini, Dominique},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)}, year={2022}}
+
+@inproceedings{kreuzer2021san,
+  title={Rethinking Graph Transformers with Spectral Attention},
+  author={Kreuzer, Devin and Beaini, Dominique and Hamilton, William L. and Letourneau, Vincent and Tossou, Prudencio},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)}, year={2021},
+  note={Finds molecular graphs benefit LESS from full attention than other domains -- relevant context for why T7 full-pair attention does not help.}}
+
+@inproceedings{topping2022oversquashing,
+  title={Understanding Over-Squashing and Bottlenecks on Graphs via Curvature},
+  author={Topping, Jake and Di Giovanni, Francesco and Chamberlain, Benjamin Paul and Dong, Xiaowen and Bronstein, Michael M.},
+  booktitle={International Conference on Learning Representations (ICLR)}, year={2022}}
+
+@inproceedings{guo2023optbasis,
+  title={Graph Neural Networks with Learnable and Optimal Polynomial Bases},
+  author={Guo, Yuhe and Wei, Zhewei},
+  booktitle={International Conference on Machine Learning (ICML)}, year={2023},
+  note={FavardGNN/OptBasisGNN: basis choice (not just coefficients) determines filter quality -- contextualizes the ChebNetII basis choice.}}
+
+@inproceedings{steshin2023lohi,
+  title={Lo-Hi: Practical {ML} Drug Discovery Benchmark},
+  author={Steshin, Simon},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS), Datasets and Benchmarks Track}, year={2023},
+  note={Standard molecular benchmarks are overoptimistic under realistic novelty splits -- supports the protocol critique.}}
+
+@article{axelrod2022geom,
+  title={{GEOM}: Energy-annotated molecular conformations for property prediction and molecular generation},
+  author={Axelrod, Simon and Gomez-Bombarelli, Rafael},
+  journal={Scientific Data}, volume={9}, pages={185}, year={2022},
+  doi={10.1038/s41597-022-01288-4},
+  note={Canonical large-scale DFT-conformer dataset (training source for GraphMVP/Frad).}}

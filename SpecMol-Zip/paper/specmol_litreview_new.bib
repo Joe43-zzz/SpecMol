@@ -1,0 +1,109 @@
+% New literature from the 2026-06-01 scoop/repositioning review.
+% NOTE: praski2025embedding, xia2023whydeep, vantilborg2022cliffs, hamakawa2025conformation,
+% shen2025specmol already exist in refs.bib — kept here with verified metadata for cross-check.
+% The rest are NEW (thread-1/2/3 context). Merge selectively; do not duplicate keys.
+
+% === SCOOP-CRITICAL (verify against refs.bib before adding) ===
+@article{praski2025embedding,
+  title   = {Benchmarking Pretrained Molecular Embedding Models For Molecular Representation Learning},
+  author  = {Praski, Mateusz and Adamczyk, Jakub and Czech, Wojciech},
+  journal = {arXiv preprint arXiv:2508.06199},
+  year    = {2025},
+  note    = {AGH Krakow; v4 Feb 2026. 25 frozen-embedding models incl. Uni-Mol vs ECFP, classification-only, hierarchical-Bayesian; "neural models negligible over ECFP". SCOOP(partial) of C2.},
+  url     = {https://arxiv.org/abs/2508.06199}
+}
+
+@inproceedings{xia2023whydeep,
+  title     = {Why Deep Models Often cannot Beat Non-deep Counterparts on Molecular Property Prediction?},
+  author    = {Xia, Jun and Zhang, Lecheng and Zhu, Xiao and Li, Stan Z.},
+  booktitle = {ICML Workshop on Computational Biology / IMLH (Spotlight)},
+  year      = {2023},
+  note      = {arXiv:2306.17702; also NeurIPS 2023 version. 12 models x 14 datasets; tree+fingerprints best. CANONICAL PARENT of C2.},
+  url       = {https://arxiv.org/abs/2306.17702}
+}
+
+@article{hamakawa2025conformation,
+  title   = {Understanding Conformation Importance in Data-Driven Property Prediction Models},
+  author  = {Hamakawa, Yu and Miyao, Tomoyuki},
+  journal = {Journal of Chemical Information and Modeling},
+  volume  = {65}, number = {7}, pages = {3388--3404}, year = {2025},
+  doi     = {10.1021/acs.jcim.5c00018},
+  note    = {Wrong-conformer control on Uni-Mol; finetuned correct-conformer DOES use geometry. OPPOSES blanket C1; follow-up anchor.},
+  url     = {https://doi.org/10.1021/acs.jcim.5c00018}
+}
+
+@article{shen2025specmol,
+  title   = {{SpecMol}: A Spectroscopy-Grounded Foundation Model for Multi-Task Molecular Learning},
+  author  = {Shen, Shuaike and Xie, Jiaqing and Yang, Zhuo and Zhang, Antong},
+  journal = {arXiv preprint arXiv:2509.21861},
+  year    = {2025},
+  note    = {Retitled MolSpectLLM (v3). Qwen2.5-7B NMR/IR/MS model. NAME COLLISION only.},
+  url     = {https://arxiv.org/abs/2509.21861}
+}
+
+% === NEW context (thread 1: spectral / alternative-basis GNN on molecules) ===
+@article{li2025kagnn,
+  title   = {Kolmogorov--Arnold graph neural networks for molecular property prediction},
+  author  = {Li, Longlong and others},
+  journal = {Nature Machine Intelligence},
+  volume  = {7}, pages = {1346--1354}, year = {2025},
+  doi     = {10.1038/s42256-025-01087-7},
+  note    = {Thread-1: molecule-specific alternative-basis GNN work is niche; SpecMol backbone not scooped.},
+  url     = {https://doi.org/10.1038/s42256-025-01087-7}
+}
+
+@article{pham2020dggcn,
+  title   = {Distance-Geometric Graph Convolutional Network ({DG-GCN}) for {3D} Graphs},
+  author  = {Pham, Daniel T.},
+  journal = {arXiv preprint arXiv:2007.03513},
+  year    = {2020},
+  note    = {Follow-up DG-GAT arXiv:2207.08023 (2022). Distance-into-graph injection, not spectral/frozen-pair.},
+  url     = {https://arxiv.org/abs/2007.03513}
+}
+
+% === NEW context (thread 2: 3D-into-2D injection / pretraining neighbours) ===
+@inproceedings{cho2024dnd,
+  title     = {{3D} Denoisers are Good {2D} Teachers: Molecular Pretraining via Denoising and Cross-Modal Distillation},
+  author    = {Cho, Sungjun and Jeong, Dae-Woong and Ko, Sung Moon and Kim, Jaewoo and Han, Sehui and Hong, Seunghoon and Lee, Honglak and Lee, Moontae},
+  booktitle = {Proceedings of the AAAI Conference on Artificial Intelligence},
+  year      = {2024},
+  note      = {arXiv:2309.04062. 3D->2D via distillation, NOT a frozen-pair spectral gate. Supports "SpecMol injection composition unreported".},
+  url       = {https://arxiv.org/abs/2309.04062}
+}
+
+@article{yang2023galformer,
+  title   = {Geometry-aware Line Graph Transformer Pre-training for Molecular Property Prediction},
+  author  = {Yang, Peizhen and others},
+  journal = {arXiv preprint arXiv:2309.00483},
+  year    = {2023},
+  note    = {Geometry + pretraining; not spectral-filter frozen-pair injection.},
+  url     = {https://arxiv.org/abs/2309.00483}
+}
+
+% === NEW context (thread 3: negative-result / audit venue precedents) ===
+@article{zhang2024pretrainreally,
+  title   = {Can Pretrained Models Really Learn Better Molecular Representations for {AI}-Aided Drug Discovery?},
+  author  = {Zhang, Ziqiao and others},
+  journal = {Journal of Chemical Information and Modeling},
+  volume  = {64}, number = {7}, pages = {2921--2930}, year = {2024},
+  doi     = {10.1021/acs.jcim.3c01707},
+  url     = {https://doi.org/10.1021/acs.jcim.3c01707}
+}
+
+@article{fooladi2025ood,
+  title   = {Evaluating Machine Learning Models for Molecular Property Prediction: Robustness on Out-of-Distribution Data},
+  author  = {Fooladi, Hosein and others},
+  journal = {Journal of Chemical Information and Modeling},
+  volume  = {65}, number = {19}, pages = {9871--9891}, year = {2025},
+  doi     = {10.1021/acs.jcim.5c00993},
+  url     = {https://doi.org/10.1021/acs.jcim.5c00993}
+}
+
+@article{mayr2018chembl,
+  title   = {Large-scale comparison of machine learning methods for drug target prediction on {ChEMBL}},
+  author  = {Mayr, Andreas and others},
+  journal = {Chemical Science},
+  volume  = {9}, number = {24}, pages = {5441--5451}, year = {2018},
+  doi     = {10.1039/C8SC00148K},
+  url     = {https://doi.org/10.1039/C8SC00148K}
+}

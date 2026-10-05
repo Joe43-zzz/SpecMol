@@ -1,0 +1,153 @@
+% DRAFT for ICDE 2027 R1 EAB submission.
+% Author: collaboratively drafted 2026-05-28 (Claude + user).
+% NOT YET MERGED into main.tex. Review and edit, then copy in.
+%
+% Word budget targets: abstract ~200 words; introduction ~1 page (IEEE 2-col).
+% Page-budget cuts elsewhere (current 14p -> 12p limit) reserved for §4.3
+% static-vs-dynamic ablation + §5 (a) Why-static-beats-dynamic (per kickoff plan).
+
+\title{[Experiment, Analysis, and Benchmark] An Empirical Study of 3D-Pair Injection
+Mechanisms in Pretrained Molecular Spectral Graph Neural Networks}
+
+% ======================================================================
+% Abstract (draft v1, ~210 words; trim to 200 in final pass)
+% ======================================================================
+
+\begin{abstract}
+Pretrained graph neural networks for molecular property prediction
+routinely incorporate three-dimensional structural information through
+pair representations, yet the contribution of these representations to
+downstream predictive performance under matched evaluation has not been
+systematically audited. We conduct a controlled empirical study of three
+independently motivated 3D-pair injection mechanisms---static bond-level
+gating from a frozen Uni-Mol encoder (V2-T5), iterative node-to-pair
+update (T6), and pair-biased multi-head attention with a per-head sigmoid
+gate (T7)---within a shared ChebNet II spectral backbone trained with
+NT-Xent contrastive pretraining. On seven MoleculeNet-derived benchmarks
+(four classification: BBBP, BACE, ClinTox, Tox21; three regression:
+FreeSolv, ESOL, Lipo) under a matched Uni-Mol scaffold-fold split protocol
+with three to nine training seeds per cell, all three deep variants tie
+or trail a 2D-only baseline on classification within seed variance, while
+the V2-T5 + Uni-Mol pair pipeline achieves the strongest regression result
+on FreeSolv. A random forest on Morgan + RDKit 2D descriptors evaluated
+under a 30-seed protocol dominates BACE classification by approximately
+13 AUC points, demonstrating fingerprint saturation as the ceiling on at
+least one benchmark. A mechanism-level analysis of V2-T5 reveals an
+aromatic-routing pattern (Pearson \( r = {+}0.66 \)) consistent across all
+audited training seeds, and T7's per-head attention gate stays in the
+near-identity-residual regime documented by ReZero and LayerScale across
+every audited checkpoint. We additionally document and quantify a
+silent unidirectional-bond featurization regression in our codebase that
+drops approximately 19\% of heavy atoms from the symmetric Laplacian and
+shifts apparent V2-T5 BACE performance by 7.4 AUC points; we audit
+fourteen widely cited public molecular GNN repositories for the same
+vulnerability. We release the audit script, all dataset processing
+pipelines, baseline implementations, and per-seed checkpoints to support
+reproducible cross-benchmark comparison.
+\end{abstract}
+
+% ======================================================================
+% Introduction (draft v1, ~1 page IEEE 2-col estimated)
+% ======================================================================
+
+\section{Introduction}
+\label{sec:intro}
+
+Three-dimensional pair representations from pretrained molecular encoders
+(notably Uni-Mol~\cite{uni-mol2023} and its descendants) have become a
+standard input modality for downstream molecular property prediction.
+The implicit hypothesis behind their adoption is that pair-wise geometric
+information, integrated into the message-passing graph encoder, transfers
+useful inductive bias from a large unlabeled chemistry corpus to small
+labeled benchmarks. Concurrently, a wave of reproducibility studies has
+shown that the apparent gains of deep graph encoders over classical
+fingerprint-based baselines are protocol-sensitive
+\cite{deng2023systematic, vanTilborg2024limitations, pocha2023atomic}.
+This study asks a focused empirical question that sits between those two
+literatures: when matched against strong classical and supervised-graph
+controls under a single evaluation protocol, do three independently
+motivated 3D-pair injection mechanisms differ predictively, and if not,
+what mechanisms do they actually learn?
+
+\paragraph{Mechanisms studied.}
+We compare three injection paths within a shared ChebNet II
+\cite{he2022chebnetii} spectral backbone:
+(i) \emph{V2-T5}, a small MLP-projected gate (with bias-initialized
+near-identity sigmoid) that multiplies each chemical-bond edge weight in
+the symmetric Laplacian;
+(ii) \emph{T6}, an iterative bidirectional node-to-pair update that lets
+both representations refine each other at every layer; and
+(iii) \emph{T7}, a pair-biased multi-head attention block with a per-head
+sigmoid gate stacked on top of V2-T5. All three share the same
+contrastive pretraining objective (NT-Xent across four views), the same
+downstream evaluation (frozen encoder + linear probe), and the same
+fingerprint MLP fusion. They differ only in how the frozen pair
+representation enters the spectral filter.
+
+\paragraph{Benchmark scope.}
+Following Luo \emph{et al.} \cite{luo2024classicgnn}, we report all
+variants on a single matched protocol across seven MoleculeNet-derived
+benchmarks: BBBP (n=2{,}039), BACE (n=1{,}513), ClinTox (n=1{,}478,
+2-task), and Tox21 (n=7{,}831, 12-task) for classification; FreeSolv
+(n=642), ESOL (n=1{,}128), and Lipo (n=4{,}200) for regression. Each
+training cell is averaged over three pretraining seeds with three
+downstream evaluation restarts (nine measurements) where the budget
+permits, and the BBBP V0/V2-T5/T6 cells additionally extend to nine
+training seeds to anchor the seed-variance discussion. Classical Random
+Forest with Morgan + RDKit 2D descriptors is reported under the 30-seed
+protocol of Deng \emph{et al.}~\cite{deng2023systematic} alongside a
+supervised D-MPNN baseline (Chemprop)~\cite{yang2019chemprop}.
+
+\paragraph{Contributions.}
+\begin{itemize}
+\item \textbf{(C1) A controlled cross-benchmark audit of 3D-pair injection.}
+On seven benchmarks under matched seeds and split protocol, all three
+deep variants tie or trail a 2D-only baseline on every classification
+endpoint within seed variance. The largest reliable separation is on
+FreeSolv regression, where V2-T5 + Uni-Mol pair achieves RMSE 0.638
+against Chemprop's default-hyperparameter 0.879. Random Forest dominates
+BACE by approximately 13 AUC points, replicating the fingerprint-
+saturation pattern of~\cite{deng2023systematic} under our setting.
+
+\item \textbf{(C2) Mechanism-level analysis of V2-T5.} The learned bond
+gate exhibits an aromatic-routing pattern: across all nine audited (BBBP,
+seed) checkpoints the gate up-weights aromatic bonds and down-weights
+saturated single bonds, with Pearson correlation against the aromatic-
+bond indicator in $[0.6, 0.7]$. The same architecture trained on BACE
+does not learn the routing, consistent with fingerprint saturation
+masking any geometry-side signal.
+
+\item \textbf{(C3) Documentation of T7's closed-gate regime.} The
+per-head sigmoid gate in T7 stays within $[0.122, 0.124]$ across all nine
+audited (benchmark, seed) checkpoints. This places the trained T7 in the
+near-identity-residual regime documented by ReZero
+\cite{bachlechner2021rezero} and LayerScale \cite{touvron2021cait}, and is
+consistent with the contrastive pretraining objective providing little
+direct gradient pressure on attention-output utilization.
+
+\item \textbf{(C4) Forensic featurization audit.} An internal
+unidirectional-bond featurization regression in our GraphDTA-derived
+loader~\cite{nguyen2021graphdta} caused approximately 19\% of heavy atoms
+on BBBP, 18\% on BACE, and 24\% on FreeSolv to receive out-degree zero in
+the symmetric Laplacian. Controlling for this regression in a matched
+pre-fix vs.\ post-fix BACE ablation shifts V2-T5 by 7.4 AUC points,
+demonstrating that featurization choices alone can match or exceed the
+gap that motivates architectural development. We audit fourteen widely
+cited molecular GNN repositories for the same vulnerability and report
+where it is and is not present.
+
+\item \textbf{(C5) Reproducibility artifact.} Per the ICDE EAB requirement,
+we release the full evaluation harness, all dataset preparation scripts
+including the B4 featurization audit, baseline implementations, and
+per-seed checkpoints. All numbers in our tables are regenerated by a
+single \texttt{paper/make\_tables.py} from machine-readable per-seed JSON.
+\end{itemize}
+
+The remainder of the paper is organized as follows. Section
+\ref{sec:related} reviews 3D-pair injection in molecular GNNs and
+benchmark-reliability work in molecular ML. Section \ref{sec:method}
+describes the shared backbone, the three injection mechanisms, and the
+featurization-control protocol. Section \ref{sec:experiments} presents
+the cross-benchmark audit. Section \ref{sec:discussion} discusses the
+mechanism-without-metric finding, fingerprint saturation, and
+limitations. Section \ref{sec:conclusion} concludes.
